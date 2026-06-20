@@ -113,18 +113,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // Sound Playing Controller (Establishing Offscreen Document)
 async function playSoundEffect(soundType) {
   await ensureOffscreenDocument();
-  chrome.runtime.sendMessage({ type: "PLAY_SOUND", source: soundType });
+  chrome.runtime.sendMessage({ type: "PLAY_SOUND", source: soundType }).catch(() => {});
 }
 
 // Nature sounds manager
 async function playAmbientSound(soundType, volume = 0.5) {
   await ensureOffscreenDocument();
-  chrome.runtime.sendMessage({ type: "PLAY_AMBIENT", sound: soundType, volume: volume });
+  chrome.runtime.sendMessage({ type: "PLAY_AMBIENT", sound: soundType, volume: volume }).catch(() => {});
 }
 
 async function stopAmbientSound() {
   await ensureOffscreenDocument();
-  chrome.runtime.sendMessage({ type: "STOP_AMBIENT" });
+  chrome.runtime.sendMessage({ type: "STOP_AMBIENT" }).catch(() => {});
 }
 
 async function ensureOffscreenDocument() {
@@ -154,7 +154,7 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
       // Play start sound
       await playSoundEffect("start");
       // Notify active newtab tabs that timer has started
-      chrome.runtime.sendMessage({ type: "TIMER_UPDATED", state: state });
+      chrome.runtime.sendMessage({ type: "TIMER_UPDATED", state: state }).catch(() => {});
     });
   }
   chrome.notifications.clear(notificationId);
@@ -360,7 +360,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       console.log("Aura Notes: Selection saved successfully", newNote);
       
       // Notify any active dashboards to refresh notes
-      chrome.runtime.sendMessage({ type: "NOTE_ADDED", note: newNote });
+      chrome.runtime.sendMessage({ type: "NOTE_ADDED", note: newNote }).catch(() => {});
       
     } catch (error) {
       console.error("Aura Notes context menu error:", error);

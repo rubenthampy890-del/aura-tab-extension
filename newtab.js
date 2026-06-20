@@ -141,7 +141,7 @@ async function loadCustomWallpaper() {
       cachedWallpaperObjectUrl = null;
     }
   } catch (e) {
-    console.error("Failed to load custom wallpaper from IndexedDB:", e);
+    console.warn("Failed to load custom wallpaper from IndexedDB:", e);
     cachedWallpaperObjectUrl = null;
   }
 }
@@ -1368,12 +1368,12 @@ function fetchWeatherData() {
           renderWeatherDashboard(data);
         })
         .catch(err => {
-          console.error("Open-Meteo weather fetch error:", err);
+          console.warn("Open-Meteo weather fetch error:", err);
           document.getElementById("weather-desc").innerText = "Weather unavailable";
         });
     },
     (error) => {
-      console.warn("Geolocation denied or unavailable. Fallback weather for London.", error);
+      console.warn("Geolocation denied or unavailable. Fallback weather for London: " + error.message);
       // Fallback coordinates: London
       const url = `https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`;
       fetch(url)
@@ -1381,7 +1381,7 @@ function fetchWeatherData() {
         .then(data => {
           renderWeatherDashboard(data, "London");
         })
-        .catch(e => console.error("Fallback weather error:", e));
+        .catch(e => console.warn("Fallback weather error:", e));
     }
   );
 }
@@ -2651,7 +2651,7 @@ document.addEventListener("copy", () => {
             renderClipboardHistory();
           });
         })
-        .catch(e => console.error(e));
+        .catch(e => console.warn(e));
     }, 200);
   });
 });
@@ -3211,7 +3211,7 @@ function setupUIEventListeners() {
         alert("Wallpaper saved and applied successfully!");
       });
     } catch (err) {
-      console.error("Failed to apply URL wallpaper:", err);
+      console.warn("Failed to apply URL wallpaper:", err);
       alert("Failed to apply URL wallpaper: " + err.message);
     } finally {
       applyBtn.textContent = originalText;
@@ -3645,7 +3645,7 @@ function initPinterestDownloader() {
       previewArea.style.display = "flex";
       actionsWrap.style.display = "flex";
     } catch (err) {
-      console.error("Pinterest fetch error:", err);
+      console.warn("Pinterest fetch error:", err);
       loader.style.display = "none";
       emptyPrompt.style.display = "block";
       alert("Failed to fetch Pinterest media: " + err.message);
@@ -3694,7 +3694,7 @@ function initPinterestDownloader() {
         alert("Pinterest wallpaper saved and applied successfully at maximum quality!");
       });
     } catch (err) {
-      console.error("Failed to set wallpaper:", err);
+      console.warn("Failed to set wallpaper:", err);
       alert("Failed to set wallpaper: " + err.message);
     } finally {
       setBgBtn.textContent = originalText;
@@ -3723,7 +3723,7 @@ function initPinterestDownloader() {
 
       setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
     } catch (err) {
-      console.error("Failed to download file:", err);
+      console.warn("Failed to download file:", err);
       alert("Failed to download: " + err.message);
     } finally {
       downloadBtn.textContent = originalText;
@@ -3734,13 +3734,9 @@ function initPinterestDownloader() {
 
 function fetchBlobFromBackground(url) {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage({ type: "FETCH_PINTEREST_MEDIA", url: url }, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
+    safeSendMessage({ type: "FETCH_PINTEREST_MEDIA", url: url }, (response) => {
       if (!response) {
-        reject(new Error("No response from background script"));
+        reject(new Error("Extension context invalidated or no response from background script"));
         return;
       }
       if (!response.success) {
@@ -3773,13 +3769,9 @@ async function fetchPinterestMedia(pinUrl) {
 
   // Fetch the HTML from the background script to bypass CORS and avoid Pinterest login redirects
   const htmlResult = await new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage({ type: "FETCH_PINTEREST_HTML", url: pinUrl }, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
+    safeSendMessage({ type: "FETCH_PINTEREST_HTML", url: pinUrl }, (response) => {
       if (!response) {
-        reject(new Error("No response from background script"));
+        reject(new Error("Extension context invalidated or no response from background script"));
         return;
       }
       if (!response.success) {
@@ -3900,8 +3892,8 @@ async function fetchPinterestMedia(pinUrl) {
     try {
       // Check if originals is valid (fast validation) via background script to bypass CORS
       const checkHd = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: "CHECK_URL_HEAD", url: hdImageUrl }, (response) => {
-          if (chrome.runtime.lastError || !response || !response.success) {
+        safeSendMessage({ type: "CHECK_URL_HEAD", url: hdImageUrl }, (response) => {
+          if (!response || !response.success) {
             resolve({ ok: false });
           } else {
             resolve(response);
