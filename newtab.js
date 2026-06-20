@@ -49,7 +49,15 @@ const DEFAULT_CONFIG = {
     pomodoro: 25,
     shortBreak: 5,
     longBreak: 15
-  }
+  },
+    
+  // New Widgets & Customization Toggles
+  showTodo: true,
+  showQuote: true,
+  borderWidth: 1.5,
+  bgBlur: 0,
+  glassTint: "#0f172a",
+  todoList: []
 };
 
 // --- IndexedDB Local Storage for High-Quality Photos/Videos ---
@@ -370,6 +378,9 @@ function loadConfiguration() {
         populateSettingsInputs();
         renderSidebarDock();
         renderRecentSearches();
+        renderTodoList();
+        initTodoWidgetEvents();
+        initQuoteWidget();
         initWidgetsDraggability();
         
         // Load quick tools subpanes
@@ -399,6 +410,14 @@ function applyDesignSystemStyles() {
   
   const rgb = hexToRgb(settings.accentColor);
   root.style.setProperty("--accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+
+  // Custom Glass Tint Color
+  const glassTintRgb = hexToRgb(settings.glassTint || "#0f172a");
+  root.style.setProperty("--bg-color", `${glassTintRgb.r}, ${glassTintRgb.g}, ${glassTintRgb.b}`);
+
+  // Custom Border Width & Background Blur
+  root.style.setProperty("--border-width", `${settings.borderWidth || 1.5}px`);
+  root.style.setProperty("--bg-blur", `${settings.bgBlur || 0}px`);
   
   // Set fonts
   root.style.setProperty("--font-family", `'${settings.fontFamily}', -apple-system, system-ui, sans-serif`);
@@ -544,6 +563,8 @@ function applyDesignSystemStyles() {
   toggleWidgetElement("draggable-mostVisited", settings.showMostVisited);
   toggleWidgetElement("left-sidebar-dock", settings.showQuickLinks);
   toggleWidgetElement("draggable-zenMode", settings.showZenButton);
+  toggleWidgetElement("draggable-todo", settings.showTodo);
+  toggleWidgetElement("draggable-quote", settings.showQuote);
   
   // Set search engine active indicator icon
   const activeEngine = SEARCH_ENGINES_CONFIG[settings.searchEngine] || SEARCH_ENGINES_CONFIG.google;
@@ -583,6 +604,8 @@ function populateSettingsInputs() {
   document.getElementById("toggle-most-visited").checked = settings.showMostVisited;
   document.getElementById("toggle-quick-links").checked = settings.showQuickLinks;
   document.getElementById("toggle-zen-button").checked = settings.showZenButton;
+  document.getElementById("toggle-todo").checked = settings.showTodo;
+  document.getElementById("toggle-quote").checked = settings.showQuote;
   
   document.getElementById("toggle-seconds").checked = settings.clockSeconds;
   document.getElementById("toggle-24h").checked = settings.clock24h;
@@ -605,9 +628,17 @@ function populateSettingsInputs() {
   
   document.getElementById("input-radius").value = settings.cornerRadius;
   document.getElementById("val-radius").innerText = settings.cornerRadius;
+
+  document.getElementById("input-border-width").value = settings.borderWidth || 1.5;
+  document.getElementById("val-border-width").innerText = settings.borderWidth || 1.5;
+
+  document.getElementById("input-glass-tint").value = settings.glassTint || "#0f172a";
   
   document.getElementById("input-bg-darkness").value = settings.darkenOverlay * 100;
   document.getElementById("val-bg-darkness").innerText = Math.round(settings.darkenOverlay * 100);
+
+  document.getElementById("input-bg-blur").value = settings.bgBlur || 0;
+  document.getElementById("val-bg-blur").innerText = settings.bgBlur || 0;
   
   // Solid color Hex
   document.getElementById("input-solid-bg").value = settings.solidColor;
@@ -2530,6 +2561,8 @@ function setupUIEventListeners() {
   bindVisibilityToggle("toggle-most-visited", "showMostVisited");
   bindVisibilityToggle("toggle-quick-links", "showQuickLinks");
   bindVisibilityToggle("toggle-zen-button", "showZenButton");
+  bindVisibilityToggle("toggle-todo", "showTodo");
+  bindVisibilityToggle("toggle-quote", "showQuote");
   
   // Format Toggles
   document.getElementById("toggle-seconds").addEventListener("change", (e) => {
@@ -2609,6 +2642,40 @@ function setupUIEventListeners() {
   bindRangeSlider("input-opacity", "val-opacity", "glassOpacity");
   bindRangeSlider("input-border-opacity", "val-border-opacity", "borderOpacity");
   bindRangeSlider("input-radius", "val-radius", "cornerRadius");
+
+  // Border width slider
+  const borderWidthSlider = document.getElementById("input-border-width");
+  borderWidthSlider.addEventListener("input", (e) => {
+    const val = parseFloat(e.target.value);
+    document.getElementById("val-border-width").innerText = val;
+    settings.borderWidth = val;
+    applyDesignSystemStyles();
+  });
+  borderWidthSlider.addEventListener("change", () => {
+    saveSettingsSync();
+  });
+
+  // Glass tint picker
+  const tintColorPicker = document.getElementById("input-glass-tint");
+  tintColorPicker.addEventListener("input", (e) => {
+    settings.glassTint = e.target.value;
+    applyDesignSystemStyles();
+  });
+  tintColorPicker.addEventListener("change", () => {
+    saveSettingsSync();
+  });
+
+  // Wallpaper blur slider
+  const bgBlurSlider = document.getElementById("input-bg-blur");
+  bgBlurSlider.addEventListener("input", (e) => {
+    const val = parseInt(e.target.value);
+    document.getElementById("val-bg-blur").innerText = val;
+    settings.bgBlur = val;
+    applyDesignSystemStyles();
+  });
+  bgBlurSlider.addEventListener("change", () => {
+    saveSettingsSync();
+  });
   
   // Darkness slider
   const darkSlider = document.getElementById("input-bg-darkness");
@@ -3528,4 +3595,137 @@ async function fetchPinterestMedia(pinUrl) {
   } else {
     throw new Error("Could not find any media content on this Pinterest page. Make sure it is a direct Pin link.");
   }
+}
+
+// ==========================================================================
+// New Widgets: Todo List and Daily Quotes
+// ==========================================================================
+
+const INSPIRED_QUOTES = [
+  { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
+  { text: "Make it simple, but significant.", author: "Don Draper" },
+  { text: "Code is like humor. When you have to explain it, it’s bad.", author: "Cory House" },
+  { text: "First, solve the problem. Then, write the code.", author: "John Johnson" },
+  { text: "Before software can be reusable it first has to be usable.", author: "Ralph Johnson" },
+  { text: "Make it work, make it right, make it fast.", author: "Kent Beck" },
+  { text: "Programming is the art of telling another human what the computer should do.", author: "Donald Knuth" },
+  { text: "Focus is a matter of deciding what things you're not going to do.", author: "John Carmack" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+  { text: "Technology is best when it brings people together.", author: "Matt Mullenweg" },
+  { text: "One man's constant is another man's variable.", author: "Alan Perlis" },
+  { text: "Quality is a product of a conflict between design and content.", author: "Yann LeCun" },
+  { text: "An ounce of prevention is worth a pound of cure.", author: "Benjamin Franklin" },
+  { text: "Talk is cheap. Show me the code.", author: "Linus Torvalds" },
+  { text: "The best error message is the one that never shows up.", author: "Thomas Fuchs" },
+  { text: "Every great developer you know got there by solving problems they were unqualified to solve.", author: "Patrick McKenzie" },
+  { text: "Do not search for the truth, just be willing to see it.", author: "Zen Proverb" },
+  { text: "The function of good software is to make the complex appear simple.", author: "Grady Booch" },
+  { text: "Computers are good at following instructions, but not at reading your mind.", author: "Donald Knuth" },
+  { text: "Perfect is the enemy of good.", author: "Voltaire" }
+];
+
+// --- Todo List Widget ---
+function renderTodoList() {
+  const container = document.getElementById("todo-items-list");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const list = settings.todoList || [];
+  if (list.length === 0) {
+    container.innerHTML = `<div class="todo-empty" style="text-align:center; font-size:12px; opacity:0.5; padding: 12px 0;">No tasks for today!</div>`;
+    return;
+  }
+  
+  list.forEach((item, idx) => {
+    const div = document.createElement("div");
+    div.className = `todo-item ${item.completed ? "completed" : ""}`;
+    div.innerHTML = `
+      <div class="todo-item-left">
+        <input type="checkbox" class="todo-checkbox" ${item.completed ? "checked" : ""} data-idx="${idx}">
+        <span class="todo-text">${escapeHtml(item.text)}</span>
+      </div>
+      <button class="todo-delete-btn" data-idx="${idx}">&times;</button>
+    `;
+    container.appendChild(div);
+  });
+  
+  // Bind item change events
+  container.querySelectorAll(".todo-checkbox").forEach(chk => {
+    chk.addEventListener("change", (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      if (settings.todoList && settings.todoList[idx]) {
+        settings.todoList[idx].completed = e.target.checked;
+        saveSettingsSync();
+        renderTodoList();
+      }
+    });
+  });
+  
+  // Bind delete events
+  container.querySelectorAll(".todo-delete-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      if (settings.todoList) {
+        settings.todoList.splice(idx, 1);
+        saveSettingsSync();
+        renderTodoList();
+      }
+    });
+  });
+}
+
+function initTodoWidgetEvents() {
+  const form = document.getElementById("todo-add-form");
+  if (!form) return;
+  
+  // Prevent duplicate bindings
+  if (form.dataset.bound) return;
+  form.dataset.bound = "true";
+  
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = document.getElementById("todo-input");
+    const text = input.value.trim();
+    if (!text) return;
+    
+    if (!settings.todoList) settings.todoList = [];
+    settings.todoList.push({ text, completed: false });
+    saveSettingsSync();
+    renderTodoList();
+    input.value = "";
+  });
+}
+
+// Simple HTML escaping helper
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// --- Inspiration Quote Widget ---
+function initQuoteWidget() {
+  const refreshBtn = document.getElementById("quote-refresh-btn");
+  if (refreshBtn && !refreshBtn.dataset.bound) {
+    refreshBtn.dataset.bound = "true";
+    refreshBtn.addEventListener("click", loadRandomQuote);
+  }
+  loadRandomQuote();
+}
+
+function loadRandomQuote() {
+  const textEl = document.getElementById("quote-text");
+  const authorEl = document.getElementById("quote-author");
+  if (!textEl || !authorEl) return;
+  
+  const randomIndex = Math.floor(Math.random() * INSPIRED_QUOTES.length);
+  const quote = INSPIRED_QUOTES[randomIndex];
+  
+  textEl.innerText = `"${quote.text}"`;
+  authorEl.innerText = `— ${quote.author}`;
 }

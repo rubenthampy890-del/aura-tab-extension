@@ -69,7 +69,7 @@ body {
   background: rgba(var(--bg-color), var(--bg-opacity));
   backdrop-filter: blur(var(--bg-filter-blur));
   -webkit-backdrop-filter: blur(var(--bg-filter-blur));
-  border: 1px solid rgba(var(--border-color), var(--border-opacity));
+  border: var(--border-width, 1px) solid rgba(var(--border-color), var(--border-opacity));
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-diffused);
   transition: background var(--transition-normal), border var(--transition-normal), box-shadow var(--transition-normal);
@@ -839,7 +839,7 @@ body.layout-edit-active .draggable-widget .widget-resize-controls {
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border-radius: 24px;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border: var(--border-width, 1.5px) solid rgba(255, 255, 255, var(--border-opacity));
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
   transition: opacity 0.3s ease, transform 0.3s ease;
   font-family: var(--sidebar-font);
@@ -850,6 +850,12 @@ body.layout-edit-active .draggable-widget .widget-resize-controls {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sidebar-icons-list::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar-icon-btn {
@@ -919,7 +925,7 @@ body.layout-edit-active .draggable-widget .widget-resize-controls {
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border-radius: 20px;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border: var(--border-width, 1.5px) solid rgba(255, 255, 255, var(--border-opacity));
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
 }
 .quick-links-panel.active {
@@ -1234,7 +1240,7 @@ body.layout-edit-active .draggable-widget .widget-resize-controls {
   background: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(25px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+  border: var(--border-width, 1.5px) solid rgba(255, 255, 255, var(--border-opacity)) !important;
   box-shadow: -10px 0 40px rgba(0, 0, 0, 0.35) !important;
   border-radius: 24px 0 0 24px !important;
 }
@@ -2528,4 +2534,214 @@ input:checked + .slider::before {
 .pinterest-action-btn.secondary-action:hover {
   background: rgba(255, 255, 255, 0.15);
   transform: scale(1.01);
+}
+
+/* ==========================================================================
+   New Widgets & Advanced Customization Styles
+   ========================================================================== */
+
+/* Wallpaper Blur Scaling */
+.wallpaper-bg,
+.wallpaper-video {
+  filter: blur(var(--bg-blur, 0px));
+  transform: scale(1.02); /* Avoid white edges during blur */
+}
+
+/* Todo List Widget */
+.todo-widget {
+  min-width: 280px;
+  max-width: 320px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.todo-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-color);
+  opacity: 0.85;
+}
+
+.todo-items-list {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  gap: 8px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.todo-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.todo-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.todo-checkbox {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.todo-checkbox:checked {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.todo-checkbox:checked::after {
+  content: "✓";
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.todo-text {
+  font-size: 13px;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity var(--transition-fast), text-decoration var(--transition-fast);
+}
+
+.todo-item.completed .todo-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.todo-delete-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  font-size: 14px;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+  padding: 0 4px;
+}
+
+.todo-delete-btn:hover {
+  color: #ef4444;
+  transform: scale(1.1);
+}
+
+.todo-add-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+#todo-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  transition: border var(--transition-fast), background var(--transition-fast);
+}
+
+#todo-input:focus {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.todo-add-btn {
+  background: rgba(var(--accent-rgb), 0.2);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  color: #fff;
+  border-radius: 8px;
+  width: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border var(--transition-fast);
+}
+
+.todo-add-btn:hover {
+  background: rgba(var(--accent-rgb), 0.35);
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+/* Quote Widget */
+.quote-widget {
+  min-width: 280px;
+  max-width: 380px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.quote-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-color);
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.quote-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.quote-author {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: left;
+}
+
+.quote-refresh-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.quote-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transform: rotate(45deg);
 }

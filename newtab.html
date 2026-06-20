@@ -224,6 +224,33 @@
           </div>
         </div>
 
+        <!-- Draggable Todo List Widget -->
+        <div id="draggable-todo" class="draggable-widget" data-widget="todo" style="display: none;">
+          <div id="widget-todo" class="widget-container todo-widget glass-card">
+            <div class="todo-header">
+              <h4>📝 Tasks</h4>
+            </div>
+            <div class="todo-items-list custom-scrollbar" id="todo-items-list">
+              <!-- JS renders todo items here -->
+            </div>
+            <form id="todo-add-form" class="todo-add-form">
+              <input type="text" id="todo-input" placeholder="Add task..." autocomplete="off">
+              <button type="submit" class="todo-add-btn">+</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Draggable Inspiration Quote Widget -->
+        <div id="draggable-quote" class="draggable-widget" data-widget="quote" style="display: none;">
+          <div id="widget-quote" class="widget-container quote-widget glass-card">
+            <p class="quote-text" id="quote-text">"Loading inspiration..."</p>
+            <div class="quote-footer">
+              <span class="quote-author" id="quote-author">— Author</span>
+              <button id="quote-refresh-btn" class="quote-refresh-btn" title="New Quote">🔄</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Quick Links moved to left sidebar dock -->
 
       </div>
@@ -554,6 +581,16 @@
               <input type="checkbox" id="toggle-zen-button" checked>
               <span class="slider"></span>
             </label>
+            <label class="switch-label">
+              <span>Show Todo List Widget</span>
+              <input type="checkbox" id="toggle-todo" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Show Daily Quote Widget</span>
+              <input type="checkbox" id="toggle-quote" checked>
+              <span class="slider"></span>
+            </label>
           </div>
 
           <h3>Draggable Position Controls</h3>
@@ -595,6 +632,14 @@
             <label class="range-label">
               <span>Corner Roundness (<span id="val-radius">16</span>px)</span>
               <input type="range" id="input-radius" min="0" max="40" value="16">
+            </label>
+            <label class="range-label">
+              <span>Border Width (<span id="val-border-width">1.5</span>px)</span>
+              <input type="range" id="input-border-width" min="0" max="5" step="0.5" value="1.5">
+            </label>
+            <label class="color-label">
+              <span>Glass Tint Color</span>
+              <input type="color" id="input-glass-tint" value="#0f172a">
             </label>
           </div>
 
@@ -745,6 +790,10 @@
             <label class="range-label">
               <span>Darkness Overlay (<span id="val-bg-darkness">30</span>%)</span>
               <input type="range" id="input-bg-darkness" min="0" max="90" value="30">
+            </label>
+            <label class="range-label">
+              <span>Wallpaper Blur (<span id="val-bg-blur">0</span>px)</span>
+              <input type="range" id="input-bg-blur" min="0" max="20" value="0">
             </label>
           </div>
         </div>
