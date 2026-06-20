@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Aura Tab - Custom Glass Dashboard",
+  "version": "1.1.0",
+  "description": "A highly customizable glassmorphic dashboard for your browser.",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "notifications",
+    "alarms",
+    "contextMenus",
+    "offscreen",
+    "favicon"
+  ],
+  "host_permissions": [
+    "https://*.pinterest.com/*",
+    "https://*.pinterest.co.uk/*",
+    "https://*.pinterest.ca/*",
+    "https://*.pinterest.de/*",
+    "https://*.pinterest.fr/*",
+    "https://*.pinterest.es/*",
+    "https://*.pinterest.it/*",
+    "https://*.pinterest.co/*",
+    "https://pin.it/*",
+    "https://*.pinimg.com/*"
+  ],
+  "optional_permissions": [
+    "tabs",
+    "topSites",
+    "management"
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

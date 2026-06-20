@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura Tab - Custom Glass Dashboard</title>
+  <link rel="stylesheet" href="newtab.css">
+  
+  <!-- Preconnect & Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800&family=Poppins:wght@400;500;600;700&family=Gloria+Hallelujah&family=Silkscreen:wght@400;700&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="theme-midnight-navy">
+
+  <!-- Dynamic Background Wallpaper -->
+  <div id="wallpaper-bg" class="wallpaper-bg"></div>
+  <video id="wallpaper-video" class="wallpaper-video" autoplay loop muted playsinline style="display: none;"></video>
+  <div id="wallpaper-overlay" class="wallpaper-overlay"></div>
+  
+  <!-- LEFT SIDEBAR DOCK (Glassy-style) -->
+  <nav id="left-sidebar-dock" class="left-sidebar-dock">
+    <div id="sidebar-icons-list" class="sidebar-icons-list">
+      <!-- Dynamic circular favicon icons rendered by JS -->
+    </div>
+    <button id="sidebar-more-btn" class="sidebar-icon-btn sidebar-more-btn" title="Manage Quick Links">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+    </button>
+  </nav>
+
+  <!-- QUICK LINKS MANAGEMENT PANEL -->
+  <div id="quick-links-panel" class="quick-links-panel glass-card" style="display: none;">
+    <div class="ql-panel-header">
+      <h3>Quick Links</h3>
+      <button id="close-ql-panel-btn" class="close-panel-btn">&times;</button>
+    </div>
+
+    <!-- Existing links with delete badges -->
+    <div id="ql-existing-grid" class="ql-existing-grid">
+      <!-- JS renders existing links here -->
+    </div>
+
+    <div class="ql-divider"></div>
+
+    <!-- Add New Link form -->
+    <div class="ql-add-section">
+      <span class="ql-section-title">Add New Link</span>
+      <div class="ql-input-row">
+        <span class="ql-input-icon">🔗</span>
+        <input type="text" id="ql-url-input" placeholder="URL (e.g., zoom.com)" autocomplete="off">
+      </div>
+      <div class="ql-input-row">
+        <span class="ql-input-icon">✏️</span>
+        <input type="text" id="ql-name-input" placeholder="Name (Zoom)" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Popular apps quick-add grid -->
+    <div class="ql-popular-grid" id="ql-popular-grid">
+      <!-- JS renders popular app icons here -->
+    </div>
+
+    <button id="ql-add-link-btn" class="ql-add-link-btn">Add Link</button>
+  </div>
+
+  <!-- Main Grid Workspace -->
+  <div class="workspace-wrapper">
+    
+    <!-- Floating Banner for Draggable Edit Mode -->
+    <div id="edit-mode-banner" class="edit-mode-banner glass-card" style="display: none;">
+      <div class="banner-content">
+        <span class="pulse-dot"></span>
+        <span class="banner-text">Layout Edit Mode</span>
+        <span class="banner-help-btn" id="banner-help-btn" title="How to reposition?">?</span>
+      </div>
+      <button id="exit-edit-mode-btn" class="exit-edit-btn" title="Exit Edit Mode">&times;</button>
+      
+      <!-- Drag help card -->
+      <div id="drag-help-card" class="drag-help-card glass-card" style="display: none;">
+        <h4>How to reposition widgets:</h4>
+        <p>1. Drag widgets by their handles at the top center of each widget.</p>
+        <p>2. Reposition them anywhere on the dashboard.</p>
+        <p>3. Exit edit mode to lock positions. Your layout is auto-saved.</p>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD CONTENT AREA -->
+    <main class="main-content" id="main-content">
+      
+      <!-- Top Row Widgets: Weather -->
+      <div id="draggable-weather" class="draggable-widget" data-widget="weather">
+        <div id="widget-weather" class="widget-container weather-widget glass-card">
+          <div class="weather-main">
+            <span class="weather-icon-symbol" id="weather-icon-sym">☀️</span>
+            <div class="weather-temp" id="weather-temp">--°C</div>
+          </div>
+          <div class="weather-details">
+            <span class="weather-desc" id="weather-desc">Loading weather...</span>
+            <span class="weather-loc" id="weather-loc">Local Weather</span>
+          </div>
+          
+          <!-- Detailed Weather Forecast Card (opens on click/hover) -->
+          <div id="weather-detail-card" class="weather-detail-card glass-card" style="display: none;">
+            <div class="forecast-header">
+              <span id="forecast-city">Local Weather</span>
+              <span id="forecast-humidity">Humidity: --%</span>
+            </div>
+            <div class="forecast-stats">
+              <div class="stat-item">
+                <span class="stat-label">Wind</span>
+                <span id="forecast-wind" class="stat-val">-- km/h</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">UV Index</span>
+                <span id="forecast-uv" class="stat-val">--</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Precipitation</span>
+                <span id="forecast-rain" class="stat-val">-- mm</span>
+              </div>
+            </div>
+            <div class="forecast-days" id="forecast-days">
+              <!-- 3 Day Forecast injected here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Elements Stack -->
+      <div class="center-stack">
+        
+        <!-- Draggable Time & Date Clock -->
+        <div id="draggable-time" class="draggable-widget" data-widget="time">
+          <div id="widget-clock" class="widget-container clock-widget">
+            <!-- Modern digit slide clock container -->
+            <div id="flip-clock-container" class="flip-clock-container">
+              <!-- JS will inject digits here -->
+            </div>
+            <div id="standard-clock-display" class="standard-clock-display" style="display: none;">
+              00:00:00
+            </div>
+            <div id="date-display" class="date-display">Thursday, 18 June</div>
+          </div>
+        </div>
+
+        <!-- Draggable Greeting -->
+        <div id="draggable-greeting" class="draggable-widget" data-widget="greeting">
+          <div id="widget-greeting" class="widget-container greeting-widget">
+            <h1 id="greeting-display">GOOD EVENING, COMMANDER</h1>
+          </div>
+        </div>
+
+        <!-- Draggable Search Bar -->
+        <div id="draggable-searchBar" class="draggable-widget" data-widget="searchBar">
+          <div id="widget-search" class="widget-container search-widget">
+            <div class="search-input-box glass-card" id="search-input-box">
+              <div class="search-engine-selector" id="search-engine-trigger">
+                <span id="active-engine-icon" class="engine-icon-active">🔍</span>
+                <svg class="dropdown-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
+              
+              <!-- Search Autocomplete Input -->
+              <input type="text" id="search-query-input" placeholder="Search the web..." autocomplete="off">
+              
+              <!-- Multiline AI prompt input (visible only when AI selected) -->
+              <textarea id="search-prompt-textarea" placeholder="Ask AI..." style="display: none;" rows="1"></textarea>
+              
+              <button id="search-submit-btn" class="search-submit-btn" title="Search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              </button>
+              
+              <!-- Search engine select popover list -->
+              <div id="search-engine-popover" class="search-engine-popover glass-card" style="display: none;">
+                <div class="popover-section-title">Search Engines</div>
+                <div class="engine-option" data-engine="google">
+                  <span class="engine-icon">🌐</span> Google
+                </div>
+                <div class="engine-option" data-engine="brave">
+                  <span class="engine-icon">🦁</span> Brave
+                </div>
+                <div class="engine-option" data-engine="duckduckgo">
+                  <span class="engine-icon">🦆</span> DuckDuckGo
+                </div>
+                <div class="engine-option" data-engine="bing">
+                  <span class="engine-icon">🔎</span> Bing
+                </div>
+                <div class="engine-option" data-engine="youtube">
+                  <span class="engine-icon">📺</span> YouTube
+                </div>
+                
+                <div class="popover-section-title">AI Prompts</div>
+                <div class="engine-option" data-engine="perplexity">
+                  <span class="engine-icon">🌀</span> Perplexity AI
+                </div>
+                <div class="engine-option" data-engine="chatgpt">
+                  <span class="engine-icon">🤖</span> ChatGPT
+                </div>
+                <div class="engine-option" data-engine="claude">
+                  <span class="engine-icon">☁️</span> Claude
+                </div>
+                <div class="engine-option" data-engine="grok">
+                  <span class="engine-icon">🚀</span> Grok
+                </div>
+              </div>
+            </div>
+            
+            <!-- Recent Searches popover -->
+            <div id="search-history-popover" class="search-history-popover glass-card" style="display: none;">
+              <div class="history-header">
+                <span>Recent Searches</span>
+                <button id="clear-search-history" class="history-clear-btn">Clear All</button>
+              </div>
+              <div id="history-items-list" class="history-items-list">
+                <!-- Recent search items injected here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Draggable Most Visited (Top Sites) -->
+        <div id="draggable-mostVisited" class="draggable-widget" data-widget="mostVisited">
+          <div id="widget-most-visited" class="widget-container most-visited-widget glass-card">
+            <!-- Dynamic top sites injected here -->
+          </div>
+        </div>
+
+        <!-- Quick Links moved to left sidebar dock -->
+
+      </div>
+    </main>
+
+    <!-- ZEN MODE FULL-SCREEN LAYER -->
+    <div id="zen-mode-overlay" class="zen-mode-overlay" style="display: none;">
+      <!-- Zen center giant flip clock -->
+      <div id="zen-clock-container" class="zen-clock-container"></div>
+      
+      <!-- Zen ambient sounds bar -->
+      <div class="zen-controls-bar glass-card">
+        <button id="zen-audio-toggle" class="zen-control-btn" title="Toggle Ambient Sound">
+          <svg class="audio-svg-icon" id="audio-on-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          <svg class="audio-svg-icon" id="audio-off-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+        </button>
+        <div class="sound-selectors-wrap">
+          <button class="sound-select-btn active" data-sound="rain">🌧️ Rain</button>
+          <button class="sound-select-btn" data-sound="ocean">🌊 Ocean</button>
+          <button class="sound-select-btn" data-sound="wind">💨 Wind</button>
+          <button class="sound-select-btn" data-sound="white">🔇 Static</button>
+        </div>
+        <div class="zen-volume-wrap">
+          <span>🔊</span>
+          <input type="range" id="zen-volume-slider" min="0" max="1" step="0.05" value="0.5" class="volume-slider">
+        </div>
+      </div>
+    </div>
+
+    <!-- Draggable Floating Zen Mode Toggle Button -->
+    <div id="draggable-zenMode" class="draggable-widget" data-widget="zenMode">
+      <button id="zen-toggle-btn" class="zen-toggle-btn glass-card" title="Zen Mode">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      </button>
+    </div>
+
+    <!-- FLOATING SIDE ACTIONS (Preferences and Quick Tools triggers) -->
+    <div class="floating-actions-dock">
+      <!-- Quick Tools Button -->
+      <button id="quick-tools-trigger-btn" class="action-dock-btn glass-card" title="Quick Tools">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 21.89a5 5 0 0 1-7.07 0L2.05 18.1a5 5 0 0 1 0-7.07l3.77-3.77a5 5 0 0 1 7.07 0l3.77 3.77a5 5 0 0 1 0 7.07l-3.77 3.77z"></path><path d="M12 2v8"></path><path d="M17 5l-5 5"></path><path d="M7 5l5 5"></path></svg>
+      </button>
+      
+      <!-- Preferences Settings Button -->
+      <button id="settings-trigger-btn" class="action-dock-btn glass-card" title="Preferences">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
+
+    <!-- QUICK TOOLS MODAL (Bottom-Right Panel) -->
+    <div id="quick-tools-panel" class="quick-tools-panel glass-card" style="display: none;">
+      <div class="panel-header">
+        <h3>Quick Tools</h3>
+        <button id="close-quick-tools-btn" class="close-panel-btn">&times;</button>
+      </div>
+      
+      <div class="panel-tab-bar">
+        <button class="panel-tab-btn active" data-tool="focus">⏱️ Focus</button>
+        <button class="panel-tab-btn" data-tool="notes">📝 Notes</button>
+        <button class="panel-tab-btn" data-tool="tabs">📂 Tabs</button>
+        <button class="panel-tab-btn" data-tool="extensions">🧩 Apps</button>
+        <button class="panel-tab-btn" data-tool="clipboard">📋 Clips</button>
+        <button class="panel-tab-btn" data-tool="pinterest">📌 Pinterest</button>
+      </div>
+      
+      <div class="panel-content-area">
+        
+        <!-- TOOL: FOCUS TIMER (POMODORO) -->
+        <div id="tool-focus" class="tool-pane active">
+          <div class="focus-timer-section">
+            <div class="timer-dial-wrapper">
+              <svg class="progress-ring" width="160" height="160">
+                <circle class="progress-ring-bg" stroke="rgba(255, 255, 255, 0.1)" stroke-width="6" fill="transparent" r="72" cx="80" cy="80"/>
+                <circle id="timer-progress-bar" class="progress-ring-fill" stroke-width="6" fill="transparent" r="72" cx="80" cy="80"/>
+              </svg>
+              <div class="timer-time-overlay">
+                <span id="timer-countdown">25:00</span>
+                <span id="timer-status-desc">Ready</span>
+              </div>
+            </div>
+            
+            <div class="timer-controls">
+              <button id="timer-toggle-btn" class="timer-main-btn" title="Start/Pause">▶</button>
+              <button id="timer-reset-btn" class="timer-sub-btn" title="Reset">🔄</button>
+            </div>
+          </div>
+          
+          <div class="timer-modes-grid">
+            <button class="timer-mode-select active" data-mode="pomodoro">Pomodoro</button>
+            <button class="timer-mode-select" data-mode="shortBreak">Short Break</button>
+            <button class="timer-mode-select" data-mode="longBreak">Long Break</button>
+          </div>
+          
+          <!-- Customizable Timer Settings -->
+          <div class="timer-settings-group">
+            <h4>Custom Durations (Mins)</h4>
+            <div class="duration-inputs">
+              <label>Work: <input type="number" id="cfg-time-work" min="1" max="120" value="25"></label>
+              <label>Short: <input type="number" id="cfg-time-short" min="1" max="60" value="5"></label>
+              <label>Long: <input type="number" id="cfg-time-long" min="1" max="60" value="15"></label>
+            </div>
+          </div>
+          
+          <div class="focus-stats-box">
+            <span>Daily Completed: <strong id="focus-completed-today">0</strong> sessions</span>
+          </div>
+        </div>
+        
+        <!-- TOOL: NOTEPAD -->
+        <div id="tool-notes" class="tool-pane">
+          <div class="notepad-editor-wrap">
+            <div id="note-composer" class="note-composer">
+              <input type="text" id="note-title-input" placeholder="Title..." autocomplete="off">
+              <textarea id="note-content-input" placeholder="Write a note... Use right-click menu on web pages to add snippets here." rows="4"></textarea>
+              <div class="composer-actions">
+                <button id="close-composer-btn" class="note-btn-secondary">Cancel</button>
+                <button id="save-note-btn" class="note-btn-primary">Add Note</button>
+              </div>
+            </div>
+            
+            <div id="note-trigger-box" class="note-trigger-box">
+              <input type="text" id="notes-search-query" placeholder="Search notes..." autocomplete="off">
+              <button id="new-note-trigger" class="note-btn-primary">+ Add New</button>
+            </div>
+          </div>
+          
+          <div class="notepad-controls-bar">
+            <span>My Notes</span>
+            <button id="download-all-notes-btn" class="note-download-all" title="Download all notes as .txt">💾 Download All</button>
+          </div>
+          
+          <div id="notes-masonry-list" class="notes-masonry-list custom-scrollbar">
+            <!-- Notes lists will be rendered dynamically -->
+          </div>
+          
+          <div id="empty-notes-prompt" class="empty-prompt-state">
+            <span>📝</span>
+            <p>No notes yet</p>
+            <small>Snippets you save or add appear here.</small>
+          </div>
+        </div>
+        
+        <!-- TOOL: TABS MANAGER -->
+        <div id="tool-tabs" class="tool-pane">
+          <!-- Permission Gate -->
+          <div id="tabs-permission-gate" class="permission-gate-panel">
+            <div class="gate-icon">📂</div>
+            <h4>Enable Tabs Manager</h4>
+            <p>List, search, and backup your window's open tabs to manage your workspaces.</p>
+            <button id="grant-tabs-permission-btn" class="grant-permission-btn">Enable Tabs Access</button>
+            <small>This permission is processed locally in your browser.</small>
+          </div>
+          
+          <!-- Active Tabs UI (Hidden until permission granted) -->
+          <div id="tabs-manager-active-ui" class="tabs-manager-ui" style="display: none;">
+            <div class="save-tabs-group-wrap">
+              <h4>Save Window Workspace</h4>
+              <div class="input-action-row">
+                <input type="text" id="tab-group-name-input" placeholder="e.g. Work, Finance, Vacation...">
+                <button id="save-tab-group-btn" class="tab-action-btn">Save</button>
+              </div>
+            </div>
+            
+            <div class="tabs-list-section">
+              <div class="section-title-bar">
+                <span id="active-tabs-count">-- Open Tabs</span>
+                <button id="refresh-active-tabs-btn" class="refresh-tabs-btn">🔄</button>
+              </div>
+              <div id="active-tabs-list-container" class="tabs-list-container custom-scrollbar">
+                <!-- Open tabs lists here -->
+              </div>
+            </div>
+            
+            <div class="saved-groups-section">
+              <h4>Saved Workspaces</h4>
+              <div id="saved-tab-groups-list" class="saved-tab-groups-list custom-scrollbar">
+                <!-- Saved groups here -->
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- TOOL: EXTENSIONS MANAGER -->
+        <div id="tool-extensions" class="tool-pane">
+          <!-- Permission Gate -->
+          <div id="extensions-permission-gate" class="permission-gate-panel">
+            <div class="gate-icon">🧩</div>
+            <h4>Enable Extensions Manager</h4>
+            <p>Enable, disable, and clean up installed browser extensions to improve memory and speed.</p>
+            <button id="grant-extensions-permission-btn" class="grant-permission-btn">Enable Extensions Access</button>
+            <small>This permission is processed locally in your browser.</small>
+          </div>
+          
+          <!-- Active Extensions UI (Hidden until permission granted) -->
+          <div id="extensions-manager-active-ui" class="extensions-manager-ui" style="display: none;">
+            <div class="extensions-filters-wrap">
+              <input type="text" id="extensions-search-input" placeholder="Search extensions..." autocomplete="off">
+              <div class="filter-toggles">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="active">On</button>
+                <button class="filter-btn" data-filter="disabled">Off</button>
+              </div>
+            </div>
+            
+            <div id="extension-heavy-load-warning" class="heavy-load-warning" style="display: none;">
+              ⚠️ Heavy extension load detected. Disable unused ones for better speed.
+            </div>
+            
+            <div id="extensions-list-container" class="extensions-list-container custom-scrollbar">
+              <!-- Extensions lists injected here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- TOOL: CLIPBOARD HISTORY -->
+        <div id="tool-clipboard" class="tool-pane">
+          <!-- Clipboard Instructions / Activator -->
+          <div class="clipboard-config-zone">
+            <p>Save clipboard contents locally. Grant permission on browser request.</p>
+            <label class="switch-label">
+              <span>Auto-capture Clipboard</span>
+              <input type="checkbox" id="toggle-clipboard-capture">
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="clipboard-header-bar">
+            <span>Clipboard Snippets</span>
+            <button id="clear-clipboard-btn" class="clip-clear-btn" style="display: none;">Clear All</button>
+          </div>
+          
+          <div id="clipboard-history-list" class="clipboard-history-list custom-scrollbar">
+            <!-- Clipboard history here -->
+          </div>
+          
+          <div id="clipboard-empty-prompt" class="empty-prompt-state">
+            <span>📋</span>
+            <p>No clippings saved</p>
+            <small>Turn on auto-capture and copy text to see history.</small>
+          </div>
+        </div>
+
+        <!-- TOOL: PINTEREST DOWNLOADER -->
+        <div id="tool-pinterest" class="tool-pane">
+          <div class="pinterest-downloader-section">
+            <div class="pinterest-input-group">
+              <input type="text" id="pinterest-url-input" placeholder="Paste Pinterest Link (pin.it or pin page)..." autocomplete="off">
+              <button id="pinterest-fetch-btn" class="pinterest-btn">Fetch</button>
+            </div>
+            
+            <div id="pinterest-loader" class="pinterest-loader" style="display: none;">
+              <div class="spinner"></div>
+              <span>Fetching HD media...</span>
+            </div>
+            
+            <div id="pinterest-preview-area" class="pinterest-preview-area" style="display: none;">
+              <!-- Dynamic media preview goes here (img or video) -->
+            </div>
+            
+            <div id="pinterest-actions-wrap" class="pinterest-actions-wrap" style="display: none;">
+              <button id="pinterest-set-bg-btn" class="pinterest-action-btn primary-action">Set as Wallpaper</button>
+              <button id="pinterest-download-btn" class="pinterest-action-btn secondary-action">Download file</button>
+            </div>
+
+            <div id="pinterest-empty-prompt" class="empty-prompt-state">
+              <span>📌</span>
+              <p>Pinterest Downloader</p>
+              <small>Enter a Pin URL to preview, download in high-res, or directly set as wallpaper.</small>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PREFERENCES SETTINGS DRAWER (Right Side Panel) -->
+    <div id="customizer-drawer" class="customizer-drawer glass-card">
+      <div class="customizer-header">
+        <h2>Preferences</h2>
+        <button id="close-drawer-btn" class="close-drawer-btn">&times;</button>
+      </div>
+
+      <div class="customizer-tabs">
+        <button class="tab-btn active" data-tab="tab-layout">Layout</button>
+        <button class="tab-btn" data-tab="tab-theme">Theme</button>
+        <button class="tab-btn" data-tab="tab-wallpaper">Wallpaper</button>
+        <button class="tab-btn" data-tab="tab-data">Data</button>
+      </div>
+
+      <div class="customizer-content custom-scrollbar">
+        
+        <!-- TAB: LAYOUT -->
+        <div id="tab-layout" class="tab-pane active">
+          <h3>Active Widgets</h3>
+          <div class="settings-group">
+            <label class="switch-label">
+              <span>Show Clock</span>
+              <input type="checkbox" id="toggle-clock" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Show Greeting</span>
+              <input type="checkbox" id="toggle-greeting" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Show Search Bar</span>
+              <input type="checkbox" id="toggle-search" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Show Weather</span>
+              <input type="checkbox" id="toggle-weather" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Show Most Visited Sites</span>
+              <input type="checkbox" id="toggle-most-visited" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Show Quick Links Grid</span>
+              <input type="checkbox" id="toggle-quick-links" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Show Zen Mode Button</span>
+              <input type="checkbox" id="toggle-zen-button" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <h3>Draggable Position Controls</h3>
+          <div class="settings-group">
+            <label class="switch-label warning-toggle">
+              <span>Edit Layout Positions</span>
+              <input type="checkbox" id="toggle-layout-edit">
+              <span class="slider"></span>
+            </label>
+            <button id="btn-reset-layout" class="settings-action-btn danger-action" style="margin-top: 10px;">Reset Widgets Positions</button>
+            <small class="help-text">Reposition widgets by dragging them. Click reset to restore default grid positions.</small>
+          </div>
+        </div>
+
+        <!-- TAB: THEME -->
+        <div id="tab-theme" class="tab-pane">
+          <h3>Profile Info</h3>
+          <div class="settings-group">
+            <label class="text-label">
+              <span>Custom Name</span>
+              <input type="text" id="input-username" placeholder="Commander" maxlength="20">
+            </label>
+          </div>
+          
+          <h3>Glass Properties</h3>
+          <div class="settings-group">
+            <label class="range-label">
+              <span>Backdrop Blur (<span id="val-blur">15</span>px)</span>
+              <input type="range" id="input-blur" min="0" max="30" value="15">
+            </label>
+            <label class="range-label">
+              <span>Glass Opacity (<span id="val-opacity">15</span>%)</span>
+              <input type="range" id="input-opacity" min="0" max="100" value="15">
+            </label>
+            <label class="range-label">
+              <span>Border Opacity (<span id="val-border-opacity">12</span>%)</span>
+              <input type="range" id="input-border-opacity" min="0" max="100" value="12">
+            </label>
+            <label class="range-label">
+              <span>Corner Roundness (<span id="val-radius">16</span>px)</span>
+              <input type="range" id="input-radius" min="0" max="40" value="16">
+            </label>
+          </div>
+
+          <h3>Accent Color</h3>
+          <div class="settings-group">
+            <label class="color-label">
+              <span>Primary Accent</span>
+              <input type="color" id="input-accent-color" value="#3b82f6">
+            </label>
+            <div class="presets-palette-grid">
+              <button class="palette-btn accent-palette-btn" data-color="#3b82f6" style="background-color: #3b82f6;" title="Midnight Blue"></button>
+              <button class="palette-btn accent-palette-btn" data-color="#10b981" style="background-color: #10b981;" title="Emerald Green"></button>
+              <button class="palette-btn accent-palette-btn" data-color="#ef4444" style="background-color: #ef4444;" title="Crimson Red"></button>
+              <button class="palette-btn accent-palette-btn" data-color="#f59e0b" style="background-color: #f59e0b;" title="Amber Gold"></button>
+              <button class="palette-btn accent-palette-btn" data-color="#8b5cf6" style="background-color: #8b5cf6;" title="Royal Purple"></button>
+              <button class="palette-btn accent-palette-btn" data-color="#ec4899" style="background-color: #ec4899;" title="Rose Pink"></button>
+              <button class="palette-btn accent-palette-btn" data-color="#06b6d4" style="background-color: #06b6d4;" title="Cyan Tech"></button>
+              <button class="palette-btn accent-palette-btn" data-color="#f97316" style="background-color: #f97316;" title="Sunset Orange"></button>
+            </div>
+          </div>
+
+          <h3>Typography & Format</h3>
+          <div class="settings-group">
+            <label class="select-label">
+              <span>Dashboard Font Family</span>
+              <select id="select-font-family">
+                <option value="system">System Sans</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Gloria Hallelujah">Gloria Hallelujah</option>
+                <option value="Silkscreen">Silkscreen (Retro)</option>
+                <option value="Orbitron">Orbitron (Tech)</option>
+                <option value="Inter">Inter (Modern)</option>
+              </select>
+            </label>
+            <label class="select-label">
+              <span>Clock Font Family</span>
+              <select id="select-clock-font">
+                <option value="system">System Sans</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Gloria Hallelujah">Gloria Hallelujah</option>
+                <option value="Silkscreen">Silkscreen (Retro)</option>
+                <option value="Orbitron">Orbitron (Tech)</option>
+                <option value="Inter">Inter (Modern)</option>
+              </select>
+            </label>
+            <label class="select-label">
+              <span>Greeting Font Family</span>
+              <select id="select-greeting-font">
+                <option value="system">System Sans</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Gloria Hallelujah">Gloria Hallelujah</option>
+                <option value="Silkscreen">Silkscreen (Retro)</option>
+                <option value="Orbitron">Orbitron (Tech)</option>
+                <option value="Inter">Inter (Modern)</option>
+              </select>
+            </label>
+            <label class="select-label">
+              <span>Side Panel Font Family</span>
+              <select id="select-sidebar-font">
+                <option value="system">System Sans</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Gloria Hallelujah">Gloria Hallelujah</option>
+                <option value="Silkscreen">Silkscreen (Retro)</option>
+                <option value="Orbitron">Orbitron (Tech)</option>
+                <option value="Inter">Inter (Modern)</option>
+              </select>
+            </label>
+            <label class="switch-label">
+              <span>Show Seconds in Clock</span>
+              <input type="checkbox" id="toggle-seconds" checked>
+              <span class="slider"></span>
+            </label>
+            <label class="switch-label">
+              <span>Use 24-Hour Format</span>
+              <input type="checkbox" id="toggle-24h">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- TAB: WALLPAPER -->
+        <div id="tab-wallpaper" class="tab-pane">
+          <h3>Background Type</h3>
+          <div class="settings-group">
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="bg-type" value="solid"> Solid Color
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="bg-type" value="preset" checked> Presets & GIFs
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="bg-type" value="custom"> Custom Upload / URL
+              </label>
+            </div>
+          </div>
+
+          <!-- Solid Palette options -->
+          <div id="bg-section-solid" class="bg-settings-sub-section" style="display: none;">
+            <h3>Solid Color Palettes</h3>
+            <div class="presets-palette-grid">
+              <button class="palette-btn" data-color="#000000" style="background: #000000;" title="Jet Black"></button>
+              <button class="palette-btn" data-color="#1A2417" style="background: #1A2417;" title="Deep Olive"></button>
+              <button class="palette-btn" data-color="#3e2723" style="background: #3e2723;" title="Espresso"></button>
+              <button class="palette-btn" data-color="#2B3E3A" style="background: #2B3E3A;" title="Outer Space"></button>
+              <button class="palette-btn" data-color="#23221A" style="background: #23221A;" title="Moss Green"></button>
+              <button class="palette-btn" data-color="#0e1531" style="background: #0e1531;" title="Liberty Blue"></button>
+              <button class="palette-btn" data-color="linear-gradient(to bottom right, #0f172a, #1e293b, #334155)" style="background: linear-gradient(135deg, #0f172a, #334155);" title="Midnight Navy"></button>
+              <button class="palette-btn" data-color="linear-gradient(to bottom right, #1f1f1f, #2a2a2a, #3f2a1f)" style="background: linear-gradient(135deg, #1f1f1f, #3f2a1f);" title="Charcoal Amber"></button>
+            </div>
+            <label class="color-label" style="margin-top: 15px;">
+              <span>Custom Solid Hex</span>
+              <input type="color" id="input-solid-bg" value="#0f172a">
+            </label>
+          </div>
+
+          <!-- Presets & GIFs options -->
+          <div id="bg-section-preset" class="bg-settings-sub-section">
+            <h3>Preset Wallpapers</h3>
+            <div class="preset-wallpapers-carousel" id="preset-wallpapers-carousel">
+              <!-- Presets injected here -->
+            </div>
+            
+            <h3>Preset GIFs</h3>
+            <div class="preset-gifs-carousel" id="preset-gifs-carousel">
+              <!-- Presets injected here -->
+            </div>
+          </div>
+
+          <!-- Custom Upload / URL options -->
+          <div id="bg-section-custom" class="bg-settings-sub-section" style="display: none;">
+            <h3>Wallpaper URL / Pinterest Link</h3>
+            <div class="url-input-wrap">
+              <input type="url" id="input-image-url" placeholder="Paste Pinterest link, video URL, or image address...">
+              <button id="apply-url-btn" class="settings-action-btn">Apply</button>
+            </div>
+            
+            <h3>Local Wallpaper Upload (Image/Video)</h3>
+            <div class="file-upload-zone" id="file-upload-zone">
+              <p>Drag & Drop Image/Video Here or Click to Select</p>
+              <input type="file" id="input-image-file" accept="image/*,video/*" style="display: none;">
+            </div>
+            <small class="help-text">Supports HD photos and video wallpapers.</small>
+          </div>
+
+          <h3>Filter Adjustments</h3>
+          <div class="settings-group">
+            <label class="range-label">
+              <span>Darkness Overlay (<span id="val-bg-darkness">30</span>%)</span>
+              <input type="range" id="input-bg-darkness" min="0" max="90" value="30">
+            </label>
+          </div>
+        </div>
+
+        <!-- TAB: DATA MANAGEMENT -->
+        <div id="tab-data" class="tab-pane">
+          <h3>Backup & Restore</h3>
+          <div class="settings-group horizontal-btns">
+            <button id="btn-export-settings" class="settings-action-btn primary-action">Export Config</button>
+            <div class="file-import-wrapper">
+              <button class="settings-action-btn" id="import-trigger-btn">Import Config</button>
+              <input type="file" id="input-import-settings" accept=".json" style="display: none;">
+            </div>
+          </div>
+          
+          <h3>Reset Settings</h3>
+          <div class="settings-group">
+            <button id="btn-reset-settings" class="settings-action-btn danger-action">Reset to Defaults</button>
+            <small class="help-text warning-text">Warning: This will clear all settings, shortcuts, notes, and custom wallpaper files.</small>
+          </div>
+
+          <h3>Help & Version Info</h3>
+          <div class="settings-group text-block">
+            <p><strong>Aura Tab</strong> v1.1.0 (Mimicking Glassy)</p>
+            <p>Built with vanilla JS and optimized for Brave/Chrome.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bookmarks dialog removed — Quick Links panel handles CRUD -->
+
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>

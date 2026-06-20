@@ -1,0 +1,9 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# Developer test scripts
+test_pin.js
+test_fetch_pin.js
+fetch_result.json
+pinterest_page.html
