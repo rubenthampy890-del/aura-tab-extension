@@ -57,7 +57,8 @@ const DEFAULT_CONFIG = {
   borderWidth: 1.5,
   bgBlur: 0,
   glassTint: "#0f172a",
-  todoList: []
+  todoList: [],
+  activeWidgets: []
 };
 
 // --- IndexedDB Local Storage for High-Quality Photos/Videos ---
@@ -381,7 +382,7 @@ function loadConfiguration() {
         renderTodoList();
         initTodoWidgetEvents();
         initQuoteWidget();
-        initWidgetsDraggability();
+        renderActiveWidgets();
         
         // Load quick tools subpanes
         initNotesPane();
@@ -918,6 +919,303 @@ function deleteHistoryItem(query) {
   Storage.setSync({ recentSearches }, () => {
     renderRecentSearches();
   });
+}
+
+/* ==========================================================================
+   3b. Dynamic Widgets Engine & Preset Tools
+   ========================================================================== */
+const calcStates = {};
+
+function renderActiveWidgets() {
+  const container = document.getElementById("dynamic-widgets-container");
+  if (!container) return;
+  
+  container.innerHTML = "";
+  const widgets = settings.activeWidgets || [];
+  
+  widgets.forEach(widget => {
+    const widgetEl = document.createElement("div");
+    widgetEl.className = "draggable-widget glass-panel";
+    widgetEl.setAttribute("data-widget", widget.id);
+    
+    if (widget.type === "spotify" || widget.type === "youtube" || widget.type === "iframe") {
+      widgetEl.classList.add("dynamic-iframe-widget");
+      widgetEl.innerHTML = `
+        <div class="widget-title-bar">
+          <span class="widget-title-text">${widget.name}</span>
+          <button class="active-widget-remove-btn" data-remove-id="${widget.id}" title="Remove Widget">&times;</button>
+        </div>
+        <div class="iframe-wrapper-inner">
+          <div class="iframe-click-shield"></div>
+          <iframe src="${widget.src}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+        </div>
+      `;
+    } else if (widget.type === "calculator") {
+      widgetEl.classList.add("calculator-widget");
+      widgetEl.innerHTML = `
+        <div class="widget-title-bar" style="margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <span class="widget-title-text" style="font-size: 11px; font-weight: 600; opacity: 0.8;">Calculator</span>
+          <button class="active-widget-remove-btn" data-remove-id="${widget.id}" title="Remove Widget" style="font-size: 16px; line-height: 1;">&times;</button>
+        </div>
+        <div class="calc-display" id="calc-display-${widget.id}">0</div>
+        <div class="calc-buttons-grid">
+          <button class="calc-btn op-btn" data-val="C">C</button>
+          <button class="calc-btn op-btn" data-val="()">( )</button>
+          <button class="calc-btn op-btn" data-val="%">%</button>
+          <button class="calc-btn op-btn" data-val="/">/</button>
+          
+          <button class="calc-btn" data-val="7">7</button>
+          <button class="calc-btn" data-val="8">8</button>
+          <button class="calc-btn" data-val="9">9</button>
+          <button class="calc-btn op-btn" data-val="*">&times;</button>
+          
+          <button class="calc-btn" data-val="4">4</button>
+          <button class="calc-btn" data-val="5">5</button>
+          <button class="calc-btn" data-val="6">6</button>
+          <button class="calc-btn op-btn" data-val="-">&minus;</button>
+          
+          <button class="calc-btn" data-val="1">1</button>
+          <button class="calc-btn" data-val="2">2</button>
+          <button class="calc-btn" data-val="3">3</button>
+          <button class="calc-btn op-btn" data-val="+">+</button>
+          
+          <button class="calc-btn" data-val="0">0</button>
+          <button class="calc-btn" data-val=".">.</button>
+          <button class="calc-btn op-btn" data-val="back">⌫</button>
+          <button class="calc-btn eq-btn" data-val="=">=</button>
+        </div>
+      `;
+    } else if (widget.type === "soundboard") {
+      widgetEl.classList.add("soundboard-widget");
+      widgetEl.innerHTML = `
+        <div class="widget-title-bar" style="margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <span class="widget-title-text" style="font-size: 11px; font-weight: 600; opacity: 0.8;">Gentle Soundboard</span>
+          <button class="active-widget-remove-btn" data-remove-id="${widget.id}" title="Remove Widget" style="font-size: 16px; line-height: 1;">&times;</button>
+        </div>
+        <div class="soundboard-grid">
+          <button class="soundboard-btn" data-sound="campfire">
+            <span class="soundboard-btn-icon">🔥</span>
+            <span>Campfire</span>
+          </button>
+          <button class="soundboard-btn" data-sound="birds">
+            <span class="soundboard-btn-icon">🐦</span>
+            <span>Birds Chirping</span>
+          </button>
+          <button class="soundboard-btn" data-sound="thunder">
+            <span class="soundboard-btn-icon">⚡</span>
+            <span>Thunder rumble</span>
+          </button>
+          <button class="soundboard-btn" data-sound="chimes">
+            <span class="soundboard-btn-icon">🎐</span>
+            <span>Wind Chimes</span>
+          </button>
+        </div>
+      `;
+    }
+    
+    container.appendChild(widgetEl);
+    
+    // Wire up widget-specific scripts
+    if (widget.type === "calculator") {
+      initCalculatorWidget(widget.id, widgetEl);
+    } else if (widget.type === "soundboard") {
+      initSoundboardWidget(widget.id, widgetEl);
+    }
+  });
+  
+  // Wire up remove button click handlers on the spawned widgets
+  container.querySelectorAll(".active-widget-remove-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-remove-id");
+      removeWidget(id);
+    });
+  });
+  
+  // Update the Active Widgets list in settings drawer
+  renderActiveWidgetsSettingsList();
+  
+  // Initialize draggability for all widgets (includes new ones)
+  initWidgetsDraggability();
+}
+
+function renderActiveWidgetsSettingsList() {
+  const listEl = document.getElementById("active-widgets-list");
+  if (!listEl) return;
+  
+  listEl.innerHTML = "";
+  const widgets = settings.activeWidgets || [];
+  
+  if (widgets.length === 0) {
+    listEl.innerHTML = `<div style="font-size: 11px; opacity: 0.5; text-align: center; padding: 10px 0;">No active widgets</div>`;
+    return;
+  }
+  
+  widgets.forEach(widget => {
+    const item = document.createElement("div");
+    item.className = "active-widget-item";
+    
+    let icon = "🌐";
+    if (widget.type === "spotify") icon = "🎵";
+    else if (widget.type === "youtube") icon = "📺";
+    else if (widget.type === "calculator") icon = "🧮";
+    else if (widget.type === "soundboard") icon = "🔊";
+    
+    item.innerHTML = `
+      <div class="active-widget-info">
+        <span>${icon}</span>
+        <span style="font-weight: 500; text-transform: capitalize;">${widget.name}</span>
+      </div>
+      <button class="active-widget-remove-btn" data-remove-id="${widget.id}">&times;</button>
+    `;
+    
+    // Hook up delete
+    item.querySelector(".active-widget-remove-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeWidget(widget.id);
+    });
+    
+    listEl.appendChild(item);
+  });
+}
+
+function removeWidget(id) {
+  const widget = settings.activeWidgets.find(w => w.id === id);
+  if (widget && widget.type === "soundboard") {
+    safeSendMessage({ type: "STOP_AMBIENT_BG" });
+  }
+  
+  settings.activeWidgets = settings.activeWidgets.filter(w => w.id !== id);
+  
+  if (dragCoordinates[id]) delete dragCoordinates[id];
+  if (widgetScales[id]) delete widgetScales[id];
+  
+  Storage.setSync({ settings }, () => {
+    Storage.setLocal({ dragCoordinates, widgetScales }, () => {
+      renderActiveWidgets();
+    });
+  });
+}
+
+function spawnWidget(type, name, src) {
+  const id = `widget-${type}-${Date.now()}`;
+  
+  const newWidget = {
+    id,
+    type,
+    name: name || (type.charAt(0).toUpperCase() + type.slice(1)),
+    src: src || ""
+  };
+  
+  if (!settings.activeWidgets) settings.activeWidgets = [];
+  settings.activeWidgets.push(newWidget);
+  
+  // Center coordinates roughly relative to screen/viewport
+  dragCoordinates[id] = { x: 50 + (settings.activeWidgets.length * 20), y: 150 + (settings.activeWidgets.length * 20) };
+  widgetScales[id] = 1.0;
+  
+  Storage.setSync({ settings }, () => {
+    Storage.setLocal({ dragCoordinates, widgetScales }, () => {
+      renderActiveWidgets();
+    });
+  });
+}
+
+function parseIframeSrc(input) {
+  input = input.trim();
+  if (input.startsWith("<iframe")) {
+    const match = input.match(/src=["']([^"']+)["']/i);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return input;
+}
+
+function initCalculatorWidget(id, widgetEl) {
+  calcStates[id] = "0";
+  const display = widgetEl.querySelector(`#calc-display-${id}`);
+  if (!display) return;
+  
+  const buttons = widgetEl.querySelectorAll(".calc-btn");
+  buttons.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const val = btn.getAttribute("data-val");
+      handleCalculatorInput(id, val, display);
+    });
+  });
+}
+
+function handleCalculatorInput(id, val, displayEl) {
+  let state = calcStates[id];
+  
+  if (val === "C") {
+    state = "0";
+  } else if (val === "back") {
+    if (state.length > 1) {
+      state = state.slice(0, -1);
+    } else {
+      state = "0";
+    }
+  } else if (val === "=") {
+    try {
+      const sanitized = state.replace(/×/g, "*").replace(/−/g, "-");
+      if (/^[0-9+\-*/%.() ]+$/.test(sanitized)) {
+        const result = Function(`"use strict"; return (${sanitized})`)();
+        state = String(result);
+      } else {
+        state = "Error";
+      }
+    } catch (e) {
+      state = "Error";
+    }
+  } else if (val === "()") {
+    const openCount = (state.match(/\(/g) || []).length;
+    const closeCount = (state.match(/\)/g) || []).length;
+    if (openCount > closeCount && /[0-9)]$/.test(state)) {
+      state += ")";
+    } else {
+      if (state === "0") {
+        state = "(";
+      } else {
+        state += "(";
+      }
+    }
+  } else {
+    if (state === "0" && !isNaN(val)) {
+      state = val;
+    } else {
+      state += val;
+    }
+  }
+  
+  calcStates[id] = state;
+  displayEl.innerText = state;
+}
+
+function initSoundboardWidget(id, widgetEl) {
+  const buttons = widgetEl.querySelectorAll(".soundboard-btn");
+  buttons.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const sound = btn.getAttribute("data-sound");
+      toggleSoundboardSound(id, sound, btn, buttons);
+    });
+  });
+}
+
+function toggleSoundboardSound(widgetId, sound, btnEl, allButtons) {
+  const isPlaying = btnEl.classList.contains("active");
+  
+  allButtons.forEach(btn => btn.classList.remove("active"));
+  
+  if (isPlaying) {
+    safeSendMessage({ type: "STOP_AMBIENT_BG" });
+  } else {
+    btnEl.classList.add("active");
+    safeSendMessage({ type: "PLAY_AMBIENT_BG", sound: sound, volume: 0.5 });
+  }
 }
 
 /* ==========================================================================
@@ -3191,6 +3489,46 @@ function setupUIEventListeners() {
       e.preventDefault();
       document.getElementById("timer-toggle-btn").click();
     }
+  });
+
+  // Widget Library spawn buttons
+  document.querySelectorAll(".spawn-preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const preset = btn.getAttribute("data-preset");
+      if (preset === "spotify") {
+        spawnWidget("spotify", "Spotify Player", "https://open.spotify.com/embed/playlist/37i9dQZF1DX8Ueb1mRm31c");
+      } else if (preset === "youtube") {
+        spawnWidget("youtube", "YouTube Lo-Fi", "https://www.youtube.com/embed/jfKfPfyJRdk");
+      } else if (preset === "calculator") {
+        spawnWidget("calculator", "Calculator");
+      } else if (preset === "soundboard") {
+        spawnWidget("soundboard", "Gentle Soundboard");
+      }
+    });
+  });
+
+  // Custom widget builder creation
+  document.getElementById("btn-add-custom-widget").addEventListener("click", () => {
+    const nameInput = document.getElementById("widget-builder-name");
+    const srcInput = document.getElementById("widget-builder-src");
+    const name = nameInput.value.trim();
+    const srcRaw = srcInput.value.trim();
+    
+    if (!srcRaw) {
+      alert("Please enter an Iframe URL or Embed Code.");
+      return;
+    }
+    
+    const src = parseIframeSrc(srcRaw);
+    if (!src) {
+      alert("Invalid Iframe URL / Embed Code.");
+      return;
+    }
+    
+    spawnWidget("iframe", name || "Custom Widget", src);
+    
+    nameInput.value = "";
+    srcInput.value = "";
   });
 
   // Initialize built-in Pinterest Downloader

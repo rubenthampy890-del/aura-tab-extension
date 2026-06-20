@@ -189,6 +189,203 @@ function createRainPatterBuffer(ctx) {
   return buffer;
 }
 
+// Programmatic Campfire Synthesizer (low rumble + crackling sparks)
+function createCampfireBuffer(ctx) {
+  const bufferSize = 4 * ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  
+  // 1. Generate base rumble (combination of lowpassed pink/brown noise)
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + white * 0.0555179;
+    b1 = 0.99332 * b1 + white * 0.0750759;
+    b2 = 0.96900 * b2 + white * 0.1538520;
+    b3 = 0.86650 * b3 + white * 0.3104856;
+    b4 = 0.55000 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.0168980;
+    const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+    b6 = white * 0.115926;
+    data[i] = pink * 0.06; // soft rumble
+  }
+  
+  // Apply a simple lowpass filter to the base rumble
+  let lastVal = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = 0.94 * lastVal + 0.06 * data[i];
+    lastVal = data[i];
+  }
+  
+  // 2. Add randomized crackle pops (high pass spikes)
+  const numPops = 40 + Math.floor(Math.random() * 40); // 40 to 80 pops in 4 seconds
+  for (let p = 0; p < numPops; p++) {
+    const startIdx = Math.floor(Math.random() * (bufferSize - 1000));
+    const popLength = 5 + Math.floor(Math.random() * 20); // very short
+    const amplitude = 0.18 + Math.random() * 0.22;
+    
+    for (let i = 0; i < popLength; i++) {
+      const t = i / popLength;
+      const env = Math.sin(t * Math.PI) * Math.exp(-t * 5);
+      const noiseVal = Math.random() * 2 - 1;
+      data[startIdx + i] += noiseVal * env * amplitude;
+    }
+  }
+  return buffer;
+}
+
+// Programmatic Birds Chirping Synthesizer (randomized high sine frequency sweeps)
+function createBirdsBuffer(ctx) {
+  const bufferSize = 6 * ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = 0;
+  }
+  
+  // Add 5-8 chirping events at random times in the 6 seconds
+  const numEvents = 5 + Math.floor(Math.random() * 4);
+  for (let e = 0; e < numEvents; e++) {
+    const startIdx = Math.floor(Math.random() * (bufferSize - ctx.sampleRate));
+    const numChirps = 2 + Math.floor(Math.random() * 4); // 2 to 5 chirps per sequence
+    let currentOffset = 0;
+    
+    for (let c = 0; c < numChirps; c++) {
+      const chirpDuration = 0.08 + Math.random() * 0.08; // 80ms to 160ms
+      const chirpSamples = Math.floor(chirpDuration * ctx.sampleRate);
+      const startFreq = 2000 + Math.random() * 800; // 2k to 2.8kHz
+      const endFreq = startFreq + 700 + Math.random() * 700; // upward sweep
+      const amp = 0.08 + Math.random() * 0.08;
+      
+      let phase = 0;
+      for (let i = 0; i < chirpSamples; i++) {
+        const t = i / chirpSamples;
+        const env = Math.sin(t * Math.PI) * Math.exp(-t * 2.5);
+        const freq = startFreq + (endFreq - startFreq) * t;
+        phase += (2 * Math.PI * freq) / ctx.sampleRate;
+        const val = Math.sin(phase) * env * amp;
+        
+        const idx = startIdx + currentOffset + i;
+        if (idx < bufferSize) {
+          data[idx] += val;
+        }
+      }
+      currentOffset += chirpSamples + Math.floor((0.06 + Math.random() * 0.1) * ctx.sampleRate);
+    }
+  }
+  return buffer;
+}
+
+// Programmatic Thunder rumble Synthesizer (envelope-modulated deep lowpassed brown noise)
+function createThunderBuffer(ctx) {
+  const bufferSize = 8 * ctx.sampleRate; // 8 seconds loop
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  
+  // 1. Generate brown noise base
+  let lastOut = 0.0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    data[i] = (lastOut + (0.02 * white)) / 1.02;
+    lastOut = data[i];
+    data[i] *= 1.5;
+  }
+  
+  // 2. Apply thunder envelope: one big strike and one secondary rumble
+  const envelope = new Float32Array(bufferSize);
+  for (let i = 0; i < bufferSize; i++) envelope[i] = 0.02; // soft background rumble
+  
+  // Big strike at 1.5s
+  const strike1Idx = Math.floor(1.5 * ctx.sampleRate);
+  const strike1Length = Math.floor(4.5 * ctx.sampleRate);
+  for (let i = 0; i < strike1Length; i++) {
+    const t = i / strike1Length;
+    const idx = strike1Idx + i;
+    if (idx >= bufferSize) break;
+    
+    let envVal = 0;
+    if (t < 0.03) { // 0.135 seconds rise
+      envVal = t / 0.03;
+    } else {
+      const rumble = 1.0 + 0.3 * Math.sin(t * 2 * Math.PI * 4.5);
+      envVal = Math.exp(-(t - 0.03) * 1.5) * rumble;
+    }
+    envelope[idx] = Math.max(envelope[idx], envVal * 0.7);
+  }
+  
+  // Soft secondary strike at 5.2s
+  const strike2Idx = Math.floor(5.2 * ctx.sampleRate);
+  const strike2Length = Math.floor(2.5 * ctx.sampleRate);
+  for (let i = 0; i < strike2Length; i++) {
+    const t = i / strike2Length;
+    const idx = strike2Idx + i;
+    if (idx >= bufferSize) break;
+    
+    let envVal = 0;
+    if (t < 0.05) {
+      envVal = t / 0.05;
+    } else {
+      const rumble = 1.0 + 0.25 * Math.sin(t * 2 * Math.PI * 5.0);
+      envVal = Math.exp(-(t - 0.05) * 2.2) * rumble;
+    }
+    envelope[idx] = Math.max(envelope[idx], envVal * 0.35);
+  }
+  
+  // Multiply brown noise by the envelope
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] *= envelope[i];
+  }
+  
+  // Lowpass filter to keep it deep and rumbling (cutoff around 150Hz)
+  let lastVal = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = 0.978 * lastVal + 0.022 * data[i];
+    lastVal = data[i];
+  }
+  return buffer;
+}
+
+// Programmatic Wind Chimes Synthesizer (pentatonic frequencies with inharmonic resonant bells)
+function createWindChimesBuffer(ctx) {
+  const bufferSize = 5 * ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = 0;
+  }
+  
+  const freqs = [1046.50, 1174.66, 1318.51, 1567.98, 1760.00, 2093.00]; // Pentatonic notes (C6 - C7)
+  const numTriggers = 8 + Math.floor(Math.random() * 6); // 8 to 13 chimes in 5s
+  
+  for (let t = 0; t < numTriggers; t++) {
+    const startIdx = Math.floor(Math.random() * (bufferSize - 1.5 * ctx.sampleRate));
+    const freq = freqs[Math.floor(Math.random() * freqs.length)];
+    const duration = 0.8 + Math.random() * 0.7; // 0.8s to 1.5s decay
+    const decaySamples = Math.floor(duration * ctx.sampleRate);
+    const amp = 0.04 + Math.random() * 0.04;
+    
+    for (let i = 0; i < decaySamples; i++) {
+      const time = i / ctx.sampleRate;
+      const env = Math.exp(-time * (4.2 / duration)); // exponential decay
+      
+      // Metal bar resonance model: fundamental + inharmonic overtones
+      const val = Math.sin(2 * Math.PI * freq * time) + 
+                  0.45 * Math.sin(2 * Math.PI * freq * 2.76 * time) +
+                  0.2 * Math.sin(2 * Math.PI * freq * 4.4 * time) +
+                  0.1 * Math.sin(2 * Math.PI * freq * 5.4 * time);
+                  
+      const sampleVal = val * env * amp;
+      const idx = startIdx + i;
+      if (idx < bufferSize) {
+        data[idx] += sampleVal;
+      }
+    }
+  }
+  return buffer;
+}
+
 // Start playing selected ambient sound loop
 function playAmbientSound(soundType, userVolume = 0.5) {
   const ctx = getAudioContext();
@@ -204,6 +401,14 @@ function playAmbientSound(soundType, userVolume = 0.5) {
     buffer = createPinkNoiseBuffer(ctx);
   } else if (soundType === "brown" || soundType === "ocean" || soundType === "waterfall") {
     buffer = createBrownNoiseBuffer(ctx);
+  } else if (soundType === "campfire") {
+    buffer = createCampfireBuffer(ctx);
+  } else if (soundType === "birds") {
+    buffer = createBirdsBuffer(ctx);
+  } else if (soundType === "thunder") {
+    buffer = createThunderBuffer(ctx);
+  } else if (soundType === "chimes") {
+    buffer = createWindChimesBuffer(ctx);
   } else {
     buffer = createPinkNoiseBuffer(ctx); // Default
   }

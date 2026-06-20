@@ -2745,3 +2745,275 @@ input:checked + .slider::before {
   color: #fff;
   transform: rotate(45deg);
 }
+
+/* ==========================================================================
+   Widget Library & Custom Widget Builder Styling
+   ========================================================================== */
+
+.widget-library-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.library-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  text-align: center;
+  gap: 6px;
+  transition: background var(--transition-fast), border var(--transition-fast);
+}
+
+.library-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.lib-icon {
+  font-size: 24px;
+}
+
+.lib-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.library-item .settings-action-btn {
+  padding: 4px 12px;
+  font-size: 10px;
+  border-radius: 6px;
+  width: auto;
+  min-width: 60px;
+}
+
+.active-widgets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.active-widget-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.active-widget-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-widget-remove-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  font-size: 16px;
+  transition: color var(--transition-fast);
+}
+
+.active-widget-remove-btn:hover {
+  color: #ef4444;
+}
+
+/* Dynamic Iframe Widget Styling */
+.dynamic-iframe-widget {
+  min-width: 320px;
+  min-height: 240px;
+  width: 400px;
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dynamic-iframe-widget .widget-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dynamic-iframe-widget .widget-title-text {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+.iframe-wrapper-inner {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.iframe-wrapper-inner iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  background: transparent;
+}
+
+.iframe-click-shield {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  background: transparent;
+  cursor: move;
+}
+
+/* Enable shield during edit mode so dragging is not hijacked by iframe mouse events */
+.layout-edit-active .iframe-click-shield {
+  display: block;
+}
+
+/* Calculator Widget */
+.calculator-widget {
+  width: 250px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calc-display {
+  width: 100%;
+  height: 48px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 12px;
+  font-family: monospace;
+  font-size: 20px;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calc-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.calc-btn {
+  height: 38px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.calc-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.calc-btn.op-btn {
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.25);
+}
+
+.calc-btn.op-btn:hover {
+  background: rgba(var(--accent-rgb), 0.25);
+}
+
+.calc-btn.eq-btn {
+  background: rgba(var(--accent-rgb), 0.5);
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.calc-btn.eq-btn:hover {
+  background: rgba(var(--accent-rgb), 0.7);
+}
+
+/* Soundboard Widget */
+.soundboard-widget {
+  width: 280px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.soundboard-header h4 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.soundboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.soundboard-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  cursor: pointer;
+  gap: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform 0.1s ease;
+}
+
+.soundboard-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.soundboard-btn.active {
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.soundboard-btn-icon {
+  font-size: 20px;
+}
+

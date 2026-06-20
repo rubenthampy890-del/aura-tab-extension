@@ -254,6 +254,7 @@
         <!-- Quick Links moved to left sidebar dock -->
 
       </div>
+      <div id="dynamic-widgets-container"></div>
     </main>
 
     <!-- ZEN MODE FULL-SCREEN LAYER -->
@@ -537,6 +538,7 @@
         <button class="tab-btn active" data-tab="tab-layout">Layout</button>
         <button class="tab-btn" data-tab="tab-theme">Theme</button>
         <button class="tab-btn" data-tab="tab-wallpaper">Wallpaper</button>
+        <button class="tab-btn" data-tab="tab-widgets">Widgets</button>
         <button class="tab-btn" data-tab="tab-data">Data</button>
       </div>
 
@@ -795,6 +797,55 @@
               <span>Wallpaper Blur (<span id="val-bg-blur">0</span>px)</span>
               <input type="range" id="input-bg-blur" min="0" max="20" value="0">
             </label>
+          </div>
+        </div>
+
+        <!-- TAB: WIDGETS LIBRARY & BUILDER -->
+        <div id="tab-widgets" class="tab-pane">
+          <h3>Widget Library</h3>
+          <div class="settings-group">
+            <div class="widget-library-grid">
+              <div class="library-item">
+                <span class="lib-icon">🎵</span>
+                <span class="lib-name">Spotify Player</span>
+                <button class="settings-action-btn spawn-preset-btn" data-preset="spotify">Add</button>
+              </div>
+              <div class="library-item">
+                <span class="lib-icon">📺</span>
+                <span class="lib-name">YouTube Lo-Fi</span>
+                <button class="settings-action-btn spawn-preset-btn" data-preset="youtube">Add</button>
+              </div>
+              <div class="library-item">
+                <span class="lib-icon">🧮</span>
+                <span class="lib-name">Calculator</span>
+                <button class="settings-action-btn spawn-preset-btn" data-preset="calculator">Add</button>
+              </div>
+              <div class="library-item">
+                <span class="lib-icon">🔊</span>
+                <span class="lib-name">Soundboard</span>
+                <button class="settings-action-btn spawn-preset-btn" data-preset="soundboard">Add</button>
+              </div>
+            </div>
+          </div>
+
+          <h3>Custom Widget Builder</h3>
+          <div class="settings-group">
+            <label class="text-label">
+              <span>Widget Name</span>
+              <input type="text" id="widget-builder-name" placeholder="e.g. My Calendar" maxlength="25">
+            </label>
+            <label class="text-label" style="margin-top: 10px;">
+              <span>Iframe URL / Embed Code</span>
+              <input type="text" id="widget-builder-src" placeholder="Paste link or <iframe src='...'>">
+            </label>
+            <button id="btn-add-custom-widget" class="settings-action-btn primary-action" style="margin-top: 12px; width: 100%;">Create Custom Widget</button>
+          </div>
+
+          <h3>Active Widgets</h3>
+          <div class="settings-group">
+            <div id="active-widgets-list" class="active-widgets-list">
+              <!-- Active custom widgets list -->
+            </div>
           </div>
         </div>
 
