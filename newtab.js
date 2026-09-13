@@ -2491,10 +2491,12 @@ function loadSavedTabGroups() {
       openBtn.title = "Open all tabs";
       openBtn.addEventListener("click", () => {
         (Array.isArray(group.tabs) ? group.tabs : []).forEach(t => {
+          const safeUrl = normalizeHttpUrl(t?.url);
+          if (!safeUrl) return;
           if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.create) {
-            chrome.tabs.create({ url: t.url });
+            chrome.tabs.create({ url: safeUrl });
           } else {
-            window.open(t.url, '_blank');
+            window.open(safeUrl, "_blank", "noopener,noreferrer");
           }
         });
       });
