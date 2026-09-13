@@ -83,5 +83,13 @@ Since this is a fully customizable developer extension, you can install it local
 
 ---
 
+## 🔒 Privacy
+
+Aura Tab does not use developer-operated analytics or advertising. Some features contact third parties for weather, fonts, preset wallpapers, Pinterest media, or user-selected embeds. See the full [Privacy Policy](PRIVACY.md).
+
+## ✅ Development checks
+
+Every proposed change is checked for JavaScript syntax, manifest integrity, duplicate HTML IDs, required extension permissions, and Manifest V3-incompatible dynamic code execution.
+
 ## 📝 License
 This project is open-source and available under the [MIT License](LICENSE).

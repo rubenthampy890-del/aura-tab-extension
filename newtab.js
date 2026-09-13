@@ -61,6 +61,64 @@ const DEFAULT_CONFIG = {
   activeWidgets: []
 };
 
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
+
+function sanitizeSettings(rawSettings) {
+  const raw = rawSettings && typeof rawSettings === "object" ? rawSettings : {};
+  const clean = { ...DEFAULT_CONFIG, ...raw };
+
+  clean.quickLinks = (Array.isArray(raw.quickLinks) ? raw.quickLinks : DEFAULT_CONFIG.quickLinks)
+    .slice(0, 40)
+    .map(link => ({
+      name: String(link?.name || "").slice(0, 80),
+      url: normalizeHttpUrl(link?.url),
+      icon: String(link?.icon || "").slice(0, 8)
+    }))
+    .filter(link => link.url);
+
+  const allowedWidgetTypes = new Set(["spotify", "youtube", "iframe", "calculator", "soundboard"]);
+  clean.activeWidgets = (Array.isArray(raw.activeWidgets) ? raw.activeWidgets : [])
+    .slice(0, 20)
+    .map(widget => ({
+      id: String(widget?.id || ""),
+      type: String(widget?.type || ""),
+      name: String(widget?.name || "Custom Widget").slice(0, 80),
+      src: String(widget?.src || "")
+    }))
+    .filter(widget => /^[a-zA-Z0-9_-]+$/.test(widget.id) && allowedWidgetTypes.has(widget.type))
+    .map(widget => ({
+      ...widget,
+      src: ["spotify", "youtube", "iframe"].includes(widget.type) ? parseIframeSrc(widget.src) : ""
+    }))
+    .filter(widget => !["spotify", "youtube", "iframe"].includes(widget.type) || widget.src);
+
+  clean.todoList = (Array.isArray(raw.todoList) ? raw.todoList : [])
+    .slice(0, 100)
+    .map(item => ({ text: String(item?.text || "").slice(0, 500), completed: Boolean(item?.completed) }))
+    .filter(item => item.text);
+
+  const durations = raw.pomodoroDurations && typeof raw.pomodoroDurations === "object" ? raw.pomodoroDurations : {};
+  clean.pomodoroDurations = {
+    pomodoro: clampNumber(durations.pomodoro, 1, 120, 25),
+    shortBreak: clampNumber(durations.shortBreak, 1, 60, 5),
+    longBreak: clampNumber(durations.longBreak, 1, 60, 15)
+  };
+
+  clean.glassBlur = clampNumber(clean.glassBlur, 0, 30, DEFAULT_CONFIG.glassBlur);
+  clean.glassOpacity = clampNumber(clean.glassOpacity, 0, 100, DEFAULT_CONFIG.glassOpacity);
+  clean.borderOpacity = clampNumber(clean.borderOpacity, 0, 100, DEFAULT_CONFIG.borderOpacity);
+  clean.cornerRadius = clampNumber(clean.cornerRadius, 0, 40, DEFAULT_CONFIG.cornerRadius);
+  clean.borderWidth = clampNumber(clean.borderWidth, 0, 5, DEFAULT_CONFIG.borderWidth);
+  clean.bgBlur = clampNumber(clean.bgBlur, 0, 20, DEFAULT_CONFIG.bgBlur);
+  clean.darkenOverlay = clampNumber(clean.darkenOverlay, 0, 0.9, DEFAULT_CONFIG.darkenOverlay);
+  clean.username = String(clean.username || "").slice(0, 20);
+
+  return clean;
+}
+
 // --- IndexedDB Local Storage for High-Quality Photos/Videos ---
 const DB_NAME = "AuraTabDB";
 const STORE_NAME = "wallpaperStore";
@@ -352,9 +410,9 @@ document.addEventListener("DOMContentLoaded", () => {
 function loadConfiguration() {
   Storage.getSync(["settings", "recentSearches"], (syncResult) => {
     if (syncResult.settings) {
-      settings = { ...DEFAULT_CONFIG, ...syncResult.settings };
+      settings = sanitizeSettings(syncResult.settings);
     } else {
-      settings = { ...DEFAULT_CONFIG };
+      settings = sanitizeSettings(DEFAULT_CONFIG);
       Storage.setSync({ settings });
     }
     
@@ -521,9 +579,9 @@ function applyDesignSystemStyles() {
         bg.style.backgroundImage = `url('${cachedWallpaperObjectUrl}')`;
       }
     } else if (settings.customWallpaper) {
-      // Fallback for base64
-      const isBase64Video = settings.customWallpaper.startsWith("data:video/");
-      if (isBase64Video && videoBg) {
+      // Fallback for direct URLs and legacy base64 values
+      const isCustomVideo = settings.customWallpaperType && settings.customWallpaperType.startsWith("video/");
+      if (isCustomVideo && videoBg) {
         bg.style.display = "none";
         videoBg.style.display = "block";
 
@@ -545,7 +603,7 @@ function applyDesignSystemStyles() {
                 document.removeEventListener("click", playOnInteraction);
               }).catch(e => console.log("Play retry failed:", e));
             };
-            document.addEventListener("click", playOnInteraction);
+            document.addEventListener("click", playOnInteraction, { once: true });
           });
         }
       } else {
@@ -934,20 +992,29 @@ function renderActiveWidgets() {
   const widgets = settings.activeWidgets || [];
   
   widgets.forEach(widget => {
+    const widgetId = String(widget.id || "");
+    const allowedTypes = new Set(["spotify", "youtube", "iframe", "calculator", "soundboard"]);
+    if (!/^[a-zA-Z0-9_-]+$/.test(widgetId) || !allowedTypes.has(widget.type)) return;
+
+    const safeName = escapeHtml(String(widget.name || "Custom Widget"));
+    const safeId = escapeHtml(widgetId);
+    const safeSrc = parseIframeSrc(String(widget.src || ""));
+    if ((widget.type === "spotify" || widget.type === "youtube" || widget.type === "iframe") && !safeSrc) return;
+
     const widgetEl = document.createElement("div");
     widgetEl.className = "draggable-widget glass-panel";
-    widgetEl.setAttribute("data-widget", widget.id);
+    widgetEl.setAttribute("data-widget", widgetId);
     
     if (widget.type === "spotify" || widget.type === "youtube" || widget.type === "iframe") {
       widgetEl.classList.add("dynamic-iframe-widget");
       widgetEl.innerHTML = `
         <div class="widget-title-bar">
-          <span class="widget-title-text">${widget.name}</span>
-          <button class="active-widget-remove-btn" data-remove-id="${widget.id}" title="Remove Widget">&times;</button>
+          <span class="widget-title-text">${safeName}</span>
+          <button class="active-widget-remove-btn" data-remove-id="${safeId}" title="Remove Widget">&times;</button>
         </div>
         <div class="iframe-wrapper-inner">
           <div class="iframe-click-shield"></div>
-          <iframe src="${widget.src}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+          <iframe src="${escapeHtml(safeSrc)}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
         </div>
       `;
     } else if (widget.type === "calculator") {
@@ -955,9 +1022,9 @@ function renderActiveWidgets() {
       widgetEl.innerHTML = `
         <div class="widget-title-bar" style="margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <span class="widget-title-text" style="font-size: 11px; font-weight: 600; opacity: 0.8;">Calculator</span>
-          <button class="active-widget-remove-btn" data-remove-id="${widget.id}" title="Remove Widget" style="font-size: 16px; line-height: 1;">&times;</button>
+          <button class="active-widget-remove-btn" data-remove-id="${safeId}" title="Remove Widget" style="font-size: 16px; line-height: 1;">&times;</button>
         </div>
-        <div class="calc-display" id="calc-display-${widget.id}">0</div>
+        <div class="calc-display" id="calc-display-${safeId}">0</div>
         <div class="calc-buttons-grid">
           <button class="calc-btn op-btn" data-val="C">C</button>
           <button class="calc-btn op-btn" data-val="()">( )</button>
@@ -990,7 +1057,7 @@ function renderActiveWidgets() {
       widgetEl.innerHTML = `
         <div class="widget-title-bar" style="margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <span class="widget-title-text" style="font-size: 11px; font-weight: 600; opacity: 0.8;">Gentle Soundboard</span>
-          <button class="active-widget-remove-btn" data-remove-id="${widget.id}" title="Remove Widget" style="font-size: 16px; line-height: 1;">&times;</button>
+          <button class="active-widget-remove-btn" data-remove-id="${safeId}" title="Remove Widget" style="font-size: 16px; line-height: 1;">&times;</button>
         </div>
         <div class="soundboard-grid">
           <button class="soundboard-btn" data-sound="campfire">
@@ -1017,9 +1084,9 @@ function renderActiveWidgets() {
     
     // Wire up widget-specific scripts
     if (widget.type === "calculator") {
-      initCalculatorWidget(widget.id, widgetEl);
+      initCalculatorWidget(widgetId, widgetEl);
     } else if (widget.type === "soundboard") {
-      initSoundboardWidget(widget.id, widgetEl);
+      initSoundboardWidget(widgetId, widgetEl);
     }
   });
   
@@ -1052,6 +1119,9 @@ function renderActiveWidgetsSettingsList() {
   }
   
   widgets.forEach(widget => {
+    const widgetId = String(widget.id || "");
+    if (!/^[a-zA-Z0-9_-]+$/.test(widgetId)) return;
+
     const item = document.createElement("div");
     item.className = "active-widget-item";
     
@@ -1064,15 +1134,15 @@ function renderActiveWidgetsSettingsList() {
     item.innerHTML = `
       <div class="active-widget-info">
         <span>${icon}</span>
-        <span style="font-weight: 500; text-transform: capitalize;">${widget.name}</span>
+        <span style="font-weight: 500; text-transform: capitalize;">${escapeHtml(String(widget.name || "Custom Widget"))}</span>
       </div>
-      <button class="active-widget-remove-btn" data-remove-id="${widget.id}">&times;</button>
+      <button class="active-widget-remove-btn" data-remove-id="${escapeHtml(widgetId)}">&times;</button>
     `;
     
     // Hook up delete
     item.querySelector(".active-widget-remove-btn").addEventListener("click", (e) => {
       e.stopPropagation();
-      removeWidget(widget.id);
+      removeWidget(widgetId);
     });
     
     listEl.appendChild(item);
@@ -1098,13 +1168,19 @@ function removeWidget(id) {
 }
 
 function spawnWidget(type, name, src) {
+  const allowedTypes = new Set(["spotify", "youtube", "iframe", "calculator", "soundboard"]);
+  if (!allowedTypes.has(type)) return false;
+
+  const normalizedSrc = ["spotify", "youtube", "iframe"].includes(type) ? parseIframeSrc(String(src || "")) : "";
+  if (["spotify", "youtube", "iframe"].includes(type) && !normalizedSrc) return false;
+
   const id = `widget-${type}-${Date.now()}`;
   
   const newWidget = {
     id,
     type,
     name: name || (type.charAt(0).toUpperCase() + type.slice(1)),
-    src: src || ""
+    src: normalizedSrc
   };
   
   if (!settings.activeWidgets) settings.activeWidgets = [];
@@ -1119,17 +1195,83 @@ function spawnWidget(type, name, src) {
       renderActiveWidgets();
     });
   });
+  return true;
+}
+
+function normalizeHttpUrl(input) {
+  try {
+    const url = new URL(String(input || "").trim());
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    return url.href;
+  } catch (e) {
+    return "";
+  }
 }
 
 function parseIframeSrc(input) {
-  input = input.trim();
-  if (input.startsWith("<iframe")) {
-    const match = input.match(/src=["']([^"']+)["']/i);
-    if (match && match[1]) {
-      return match[1];
-    }
+  const trimmed = String(input || "").trim();
+  let candidate = trimmed;
+  if (/^<iframe\b/i.test(trimmed)) {
+    const match = trimmed.match(/src=["']([^"']+)["']/i);
+    if (!match || !match[1]) return "";
+    candidate = match[1];
   }
-  return input;
+  return normalizeHttpUrl(candidate);
+}
+
+function evaluateArithmeticExpression(expression) {
+  const source = String(expression).replace(/\s+/g, "");
+  let index = 0;
+
+  function parseExpression() {
+    let value = parseTerm();
+    while (source[index] === "+" || source[index] === "-") {
+      const operator = source[index++];
+      const right = parseTerm();
+      value = operator === "+" ? value + right : value - right;
+    }
+    return value;
+  }
+
+  function parseTerm() {
+    let value = parseFactor();
+    while (source[index] === "*" || source[index] === "/" || source[index] === "%") {
+      const operator = source[index++];
+      const right = parseFactor();
+      if ((operator === "/" || operator === "%") && right === 0) {
+        throw new Error("Division by zero");
+      }
+      if (operator === "*") value *= right;
+      else if (operator === "/") value /= right;
+      else value %= right;
+    }
+    return value;
+  }
+
+  function parseFactor() {
+    if (source[index] === "+" || source[index] === "-") {
+      const operator = source[index++];
+      const value = parseFactor();
+      return operator === "-" ? -value : value;
+    }
+
+    if (source[index] === "(") {
+      index++;
+      const value = parseExpression();
+      if (source[index] !== ")") throw new Error("Missing closing parenthesis");
+      index++;
+      return value;
+    }
+
+    const match = source.slice(index).match(/^(?:\d+(?:\.\d*)?|\.\d+)/);
+    if (!match) throw new Error("Expected number");
+    index += match[0].length;
+    return Number(match[0]);
+  }
+
+  const result = parseExpression();
+  if (index !== source.length || !Number.isFinite(result)) throw new Error("Invalid expression");
+  return Math.round((result + Number.EPSILON) * 1e12) / 1e12;
 }
 
 function initCalculatorWidget(id, widgetEl) {
@@ -1162,7 +1304,7 @@ function handleCalculatorInput(id, val, displayEl) {
     try {
       const sanitized = state.replace(/×/g, "*").replace(/−/g, "-");
       if (/^[0-9+\-*/%.() ]+$/.test(sanitized)) {
-        const result = Function(`"use strict"; return (${sanitized})`)();
+        const result = evaluateArithmeticExpression(sanitized);
         state = String(result);
       } else {
         state = "Error";
@@ -1305,6 +1447,8 @@ function setupDragEvents(widget, handle, name) {
     if (!document.body.classList.contains("layout-edit-active")) return;
     
     isDragging = true;
+    currentX = dragCoordinates[name]?.x || 0;
+    currentY = dragCoordinates[name]?.y || 0;
     startX = e.clientX - currentX;
     startY = e.clientY - currentY;
     
@@ -1600,19 +1744,32 @@ function renderSidebarDock() {
   if (!container) return;
   container.innerHTML = "";
 
-  (settings.quickLinks || []).forEach((link, idx) => {
+  (settings.quickLinks || []).forEach(link => {
+    const safeUrl = normalizeHttpUrl(link.url);
+    if (!safeUrl) return;
+
     const btn = document.createElement("a");
     btn.className = "sidebar-icon-btn";
-    btn.href = link.url;
-    btn.title = link.name || link.url;
+    btn.href = safeUrl;
+    btn.title = String(link.name || safeUrl);
 
-    const faviconUrl = getFaviconUrl(link.url);
-    const letter = getFirstLetter(link);
+    const faviconUrl = getFaviconUrl(safeUrl);
+    const letter = getFirstLetter({ ...link, url: safeUrl });
 
-    btn.innerHTML = `
-      <img src="${faviconUrl}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-      <span class="sidebar-letter" style="display:none;">${letter}</span>
-    `;
+    const image = document.createElement("img");
+    image.src = faviconUrl;
+    image.alt = "";
+    const fallback = document.createElement("span");
+    fallback.className = "sidebar-letter";
+    fallback.style.display = "none";
+    fallback.textContent = letter;
+    image.addEventListener("error", () => {
+      image.style.display = "none";
+      fallback.style.display = "flex";
+    }, { once: true });
+
+    btn.appendChild(image);
+    btn.appendChild(fallback);
     container.appendChild(btn);
   });
 }
@@ -1623,32 +1780,52 @@ function renderQLExistingGrid() {
   grid.innerHTML = "";
 
   (settings.quickLinks || []).forEach((link, idx) => {
+    const safeUrl = normalizeHttpUrl(link.url);
+    if (!safeUrl) return;
+
     const item = document.createElement("div");
     item.className = "ql-existing-item";
-    const faviconUrl = getFaviconUrl(link.url);
-    const letter = getFirstLetter(link);
+    const faviconUrl = getFaviconUrl(safeUrl);
+    const letter = getFirstLetter({ ...link, url: safeUrl });
 
-    item.innerHTML = `
-      <div class="ql-icon-circle">
-        <img src="${faviconUrl}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <span class="ql-letter" style="display:none;">${letter}</span>
-      </div>
-      <span class="ql-link-name">${link.name || link.url}</span>
-      <span class="ql-delete-badge" data-idx="${idx}">&times;</span>
-    `;
-    grid.appendChild(item);
-  });
+    const iconCircle = document.createElement("div");
+    iconCircle.className = "ql-icon-circle";
+    const image = document.createElement("img");
+    image.src = faviconUrl;
+    image.alt = "";
+    const fallback = document.createElement("span");
+    fallback.className = "ql-letter";
+    fallback.style.display = "none";
+    fallback.textContent = letter;
+    image.addEventListener("error", () => {
+      image.style.display = "none";
+      fallback.style.display = "flex";
+    }, { once: true });
+    iconCircle.appendChild(image);
+    iconCircle.appendChild(fallback);
 
-  // Delete badge handlers
-  grid.querySelectorAll(".ql-delete-badge").forEach(badge => {
-    badge.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const i = parseInt(badge.dataset.idx);
-      settings.quickLinks.splice(i, 1);
+    const name = document.createElement("span");
+    name.className = "ql-link-name";
+    name.textContent = String(link.name || safeUrl);
+
+    const deleteBadge = document.createElement("button");
+    deleteBadge.className = "ql-delete-badge";
+    deleteBadge.dataset.idx = String(idx);
+    deleteBadge.type = "button";
+    deleteBadge.setAttribute("aria-label", `Delete ${name.textContent}`);
+    deleteBadge.textContent = "×";
+    deleteBadge.addEventListener("click", (event) => {
+      event.stopPropagation();
+      settings.quickLinks.splice(idx, 1);
       saveSettingsSync();
       renderSidebarDock();
       renderQLExistingGrid();
     });
+
+    item.appendChild(iconCircle);
+    item.appendChild(name);
+    item.appendChild(deleteBadge);
+    grid.appendChild(item);
   });
 }
 
@@ -1682,20 +1859,21 @@ function renderQLPopularGrid() {
 }
 
 function addQuickLinkFromInputs() {
-  let url = document.getElementById("ql-url-input").value.trim();
+  let rawUrl = document.getElementById("ql-url-input").value.trim();
   let name = document.getElementById("ql-name-input").value.trim();
-  if (!url) return;
+  if (!rawUrl) return;
 
-  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  if (!/^https?:\/\//i.test(rawUrl)) rawUrl = "https://" + rawUrl;
+  const url = normalizeHttpUrl(rawUrl);
+  if (!url) {
+    alert("Please enter a valid HTTP or HTTPS address.");
+    return;
+  }
 
   if (!name) {
-    try {
-      const urlObj = new URL(url);
-      let host = urlObj.hostname.replace("www.", "");
-      name = host.charAt(0).toUpperCase() + host.slice(1);
-    } catch (err) {
-      name = url;
-    }
+    const urlObj = new URL(url);
+    const host = urlObj.hostname.replace(/^www\./, "");
+    name = host.charAt(0).toUpperCase() + host.slice(1);
   }
 
   settings.quickLinks.push({ name, url, icon: "" });
@@ -1817,7 +1995,7 @@ document.getElementById("timer-toggle-btn").addEventListener("click", () => {
     if (!state) return;
     
     const customDurations = settings.pomodoroDurations || { pomodoro: 25, shortBreak: 5, longBreak: 15 };
-    const command = state.isRunning ? "pauseTimer" : (state.endTime > 0 ? "resumeTimer" : "startTimer");
+    const command = state.isRunning ? "pauseTimer" : (state.isPaused ? "resumeTimer" : "startTimer");
     
     // Play electronic synth start audio when starting
     if (!state.isRunning) {
@@ -2260,13 +2438,17 @@ function saveWorkspaceTabGroup() {
   const newGroup = {
     id: `tabgroup_${Date.now()}`,
     name: name,
-    tabs: activeTabsCached.map(t => ({ title: t.title, url: t.url, favIconUrl: t.favIconUrl })),
+    tabs: activeTabsCached
+      .filter(t => normalizeHttpUrl(t.url))
+      .slice(0, 30)
+      .map(t => ({ title: String(t.title || "Untitled").slice(0, 200), url: normalizeHttpUrl(t.url) })),
     timestamp: Date.now()
   };
   
   Storage.getSync(["savedTabGroups"], (result) => {
-    const list = result.savedTabGroups || [];
+    const list = Array.isArray(result.savedTabGroups) ? result.savedTabGroups : [];
     list.unshift(newGroup);
+    list.splice(10);
     
     Storage.setSync({ savedTabGroups: list }, () => {
       input.value = "";
@@ -2292,10 +2474,12 @@ function loadSavedTabGroups() {
       
       const info = document.createElement("div");
       info.className = "group-info";
-      info.innerHTML = `
-        <h5>${group.name}</h5>
-        <span>${group.tabs.length} tabs • ${new Date(group.timestamp).toLocaleDateString()}</span>
-      `;
+      const heading = document.createElement("h5");
+      heading.textContent = String(group.name || "Saved workspace");
+      const metadata = document.createElement("span");
+      metadata.textContent = `${Array.isArray(group.tabs) ? group.tabs.length : 0} tabs • ${new Date(group.timestamp).toLocaleDateString()}`;
+      info.appendChild(heading);
+      info.appendChild(metadata);
       
       const actions = document.createElement("div");
       actions.className = "group-actions";
@@ -2306,11 +2490,13 @@ function loadSavedTabGroups() {
       openBtn.innerText = "🚀";
       openBtn.title = "Open all tabs";
       openBtn.addEventListener("click", () => {
-        group.tabs.forEach(t => {
+        (Array.isArray(group.tabs) ? group.tabs : []).forEach(t => {
+          const safeUrl = normalizeHttpUrl(t?.url);
+          if (!safeUrl) return;
           if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.create) {
-            chrome.tabs.create({ url: t.url });
+            chrome.tabs.create({ url: safeUrl });
           } else {
-            window.open(t.url, '_blank');
+            window.open(safeUrl, "_blank", "noopener,noreferrer");
           }
         });
       });
@@ -2457,10 +2643,14 @@ function loadExtensionsList(search = "", filterType = "all") {
       
       const info = document.createElement("div");
       info.className = "ext-info";
-      info.innerHTML = `
-        <span class="ext-name">${ext.name}</span>
-        <span class="ext-ver">v${ext.version}</span>
-      `;
+      const extensionName = document.createElement("span");
+      extensionName.className = "ext-name";
+      extensionName.textContent = String(ext.name || "Unnamed extension");
+      const extensionVersion = document.createElement("span");
+      extensionVersion.className = "ext-ver";
+      extensionVersion.textContent = `v${String(ext.version || "unknown")}`;
+      info.appendChild(extensionName);
+      info.appendChild(extensionVersion);
       
       left.appendChild(icon);
       left.appendChild(info);
@@ -2784,8 +2974,6 @@ function setupUIEventListeners() {
     if (pane.style.display === "none") {
       pane.style.display = "flex";
       syncFocusTimerState();
-      loadOpenTabs();
-      loadExtensionsList();
       loadClipboardHistory();
     } else {
       pane.style.display = "none";
@@ -3162,31 +3350,46 @@ function setupUIEventListeners() {
     applyBtn.disabled = true;
 
     try {
-      let mediaUrl = url;
-      let mediaType = "image/jpeg"; // default fallback
+      let mediaUrl = normalizeHttpUrl(url);
+      if (!mediaUrl) throw new Error("Please enter a valid HTTP or HTTPS address.");
 
-      // 1. Detect Pinterest URL
-      if (url.includes("pinterest.com") || url.includes("pin.it")) {
-        applyBtn.textContent = "Fetching Pin...";
-        // Normalize Pinterest URL
-        let pinUrl = url;
-        if (pinUrl.includes("pinterest.") && !pinUrl.includes("pinterest.com")) {
-          pinUrl = pinUrl.replace(/pinterest\.[a-z\.]+\/pin\//i, "pinterest.com/pin/");
-        }
-        const media = await fetchPinterestMedia(pinUrl);
-        mediaUrl = media.url;
-        mediaType = media.type === "video" ? "video/mp4" : "image/jpeg";
-      } else {
-        // 2. Detect direct video link by extension
-        const lowerUrl = url.toLowerCase();
-        if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm") || 
-            lowerUrl.endsWith(".ogg") || lowerUrl.endsWith(".m4v") || lowerUrl.endsWith(".mkv")) {
+      let mediaType = "image/jpeg";
+      const parsedUrl = new URL(mediaUrl);
+      const isPinterest = /(^|\.)pinterest\./i.test(parsedUrl.hostname) || parsedUrl.hostname === "pin.it";
+
+      if (!isPinterest) {
+        const pathname = parsedUrl.pathname.toLowerCase();
+        if (/\.(?:mp4|mov|webm|ogg|m4v|mkv)$/.test(pathname)) {
           mediaType = "video/mp4";
         }
+
+        await clearWallpaperFile();
+        if (cachedWallpaperObjectUrl) URL.revokeObjectURL(cachedWallpaperObjectUrl);
+        cachedWallpaperObjectUrl = null;
+
+        settings.bgType = "custom";
+        settings.customWallpaperType = mediaType;
+        settings.customWallpaper = mediaUrl;
+        saveSettingsSync();
+        Storage.setLocal({ customWallpaper: mediaUrl }, () => {
+          applyDesignSystemStyles();
+          populateSettingsInputs();
+          alert("Wallpaper URL saved and applied successfully!");
+        });
+        return;
       }
 
+      applyBtn.textContent = "Fetching Pin...";
+      let pinUrl = mediaUrl;
+      if (pinUrl.includes("pinterest.") && !pinUrl.includes("pinterest.com")) {
+        pinUrl = pinUrl.replace(/pinterest\.[a-z\.]+\/pin\//i, "pinterest.com/pin/");
+      }
+      const media = await fetchPinterestMedia(pinUrl);
+      mediaUrl = media.url;
+      mediaType = media.type === "video" ? "video/mp4" : "image/jpeg";
+
       applyBtn.textContent = "Downloading...";
-      // Fetch media blob via background to bypass CORS and save to IndexedDB
+      // Fetch Pinterest media via the permitted background route and save it locally
       const blob = await fetchBlobFromBackground(mediaUrl);
 
       // Save to IndexedDB
@@ -3436,7 +3639,7 @@ function setupUIEventListeners() {
     reader.onload = (evt) => {
       try {
         const parsed = JSON.parse(evt.target.result);
-        settings = { ...DEFAULT_CONFIG, ...parsed };
+        settings = sanitizeSettings(parsed);
         
         saveSettingsSync();
         applyDesignSystemStyles();
@@ -3453,8 +3656,16 @@ function setupUIEventListeners() {
   
   document.getElementById("btn-reset-settings").addEventListener("click", () => {
     if (confirm("Warning: Reset all settings to defaults? This will erase all custom wallpapers, notes, and links.")) {
-      Storage.clearAll(() => {
-        window.location.reload();
+      Storage.clearAll(async () => {
+        try {
+          await clearWallpaperFile();
+          if (cachedWallpaperObjectUrl) URL.revokeObjectURL(cachedWallpaperObjectUrl);
+          cachedWallpaperObjectUrl = null;
+        } catch (error) {
+          console.warn("Failed to clear saved wallpaper:", error);
+        } finally {
+          window.location.reload();
+        }
       });
     }
   });
